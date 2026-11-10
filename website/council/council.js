@@ -210,7 +210,6 @@
       let last = null;
       try { last = localStorage.getItem('roar-council-demo-user'); } catch (e) { }
       if (last && founders.some(f => f.email === last && f.password_set)) { me = founders.find(f => f.email === last); return startApp(); }
-      $('#demo-note').hidden = false;
       lfShow('user');
       return showLogin('#login-form');
     }
