@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Membership – ROAR</title>
+  <meta name="description" content="Who can join ROAR, fees, voting rights for residents, and how to apply.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="js/theme.js"></script>
+</head>
+<body data-page="membership">
+<div id="site-header"></div>
+
+<main id="main">
+<section class="page-hero">
+  <div class="wrap">
+    <span class="eyebrow">Membership · Part III</span>
+    <h1>Join from day one of PG. <span class="glow">Vote from year one.</span></h1>
+    <p class="lead">Membership is open to every radiation oncology resident and young radiation oncologist in India, with a vote for residents from the second year of PG. Membership opens online once ROAR is legally registered. Register your interest now and we'll tell you first.</p>
+    <div class="hero-ctas" style="margin-top:28px">
+      <a class="btn btn-primary" href="portal/">Apply or sign in</a>
+      <a class="btn btn-glass" href="#calc">Check your voting window</a>
+    </div>
+  </div>
+</section>
+
+
+<section>
+  <div class="wrap">
+    <div class="window">
+      <h2 style="font-size:1.6rem">Your voting window</h2>
+      <p>You can vote and stand for office from <b>1 year after starting PG</b> until <b>6 years after completing PG</b>. Taking up a consultant or faculty post does not end your vote; only the 6-year limit does.</p>
+      <div class="timeline" role="img" aria-label="Timeline: PG start, voting begins one year later, PG completed, voting ends six years after completion">
+        <div class="timeline-bar"></div>
+        <div class="timeline-vote"></div>
+        <span class="tick" style="left:2%">PG start</span>
+        <span class="tick below" style="left:14%">+1 yr: vote</span>
+        <span class="tick" style="left:38%">PG done</span>
+        <span class="tick below" style="left:88%">+6 yrs</span>
+      </div>
+      <div class="timeline-labels"><span>Join as a resident from day one</span><span class="vw" style="font-weight:600">Voting window</span><span>Then: Senior Member (non-voting)</span></div>
+      <p class="note" style="margin-top:18px">The clock pauses for up to 24 months in total for parental leave, documented serious illness, or a full-time research degree.</p>
+    </div>
+    <div class="window" id="calc">
+      <h2 style="font-size:1.4rem">Check your own voting window</h2>
+      <form class="form calc-form" onsubmit="return false">
+        <div><label for="calc-start">PG start date (from your allotment letter)</label><input id="calc-start" type="date"></div>
+        <div><label for="calc-end">PG completion date (leave empty if still in PG)</label><input id="calc-end" type="date"></div>
+      </form>
+      <p id="calc-out" class="lead" style="margin:16px 0 0;font-size:1.05rem" aria-live="polite">Enter your PG start date.</p>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="categories">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Categories</span>
+      <h2>Who can join.</h2>
+    </div>
+    <div class="table-scroll">
+      <table class="compare-table">
+        <thead><tr><th>Category</th><th>Who</th><th>Votes</th><th>Holds office</th></tr></thead>
+        <tbody>
+          <tr><th>Ordinary: Resident</th><td>Radiation oncology PG resident (MD/DNB) in India</td><td>From 1 year after the PG start date</td><td>Yes, once voting</td></tr>
+          <tr><th>Ordinary: Young Radiation Oncologist</th><td>Radiation oncologist up to 6 years after completing PG</td><td>Yes</td><td>Yes</td></tr>
+          <tr><th>Founding Member</th><td>The first 20 members admitted</td><td>Within the voting window; shares all decisions for the first 2 years</td><td>Within the voting window</td></tr>
+          <tr><th>Senior Member</th><td>Members who have passed 6 years after PG</td><td>No</td><td>No</td></tr>
+          <tr><th>Honorary Member</th><td>ROs more than 6 years after PG, and medical oncologists, surgical oncologists, pathologists and radiologists, on the recommendation of the President and Executive Council</td><td>No</td><td>No</td></tr>
+          <tr><th>Mentor</th><td>Senior radiation oncologists on the Advisory Mentor Board</td><td>No</td><td>No</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="join-steps">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">How to join</span>
+      <h2>Four steps, all online.</h2>
+    </div>
+    <ol class="steps">
+      <li class="card"><h3>Create an account</h3><p>Sign up in the <a href="portal/">member portal</a> with your email. Until applications open, you can <a href="index.html#join">register interest</a>.</p></li>
+      <li class="card"><h3>Apply online</h3><p>Fill in the form and upload your PG college ID card, plus your allotment letter or degree certificate.</p></li>
+      <li class="card"><h3>Verification</h3><p>The Membership Secretary verifies applications within 30 days. Refusals always give reasons, and you can appeal to the Executive Council.</p></li>
+      <li class="card"><h3>Pay and you're in</h3><p>Pay annually or once for life. You get a member number, a digital membership card, and ballots in your portal.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section id="fees">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Fees</span>
+      <h2>Membership fees.</h2>
+      <p class="lead">There is no admission fee. A resident whose stipend has been unpaid for three months or more can join with the fee deferred.</p>
+    </div>
+    <div class="table-scroll">
+      <table class="compare-table">
+        <thead><tr><th>Type</th><th>Who</th><th>Fee</th></tr></thead>
+        <tbody>
+          <tr><th>Annual</th><td>Any eligible member</td><td>₹500 per year</td></tr>
+          <tr><th>Lifetime</th><td>Any eligible member, at any time</td><td>₹5,000, once</td></tr>
+          <tr><th>Founding Member</th><td>The first 20 members admitted, recognised permanently</td><td>₹1,000, once, for life</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="faq" class="alt">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">FAQ</span>
+      <h2>Membership questions.</h2>
+    </div>
+    <div class="faq">
+      <details class="card"><summary>I'm in my first year of PG. Can I join?</summary><div><p>Yes. You can join from your first day of PG. Your vote starts 1 year after your PG start date, as shown on your allotment letter.</p></div></details>
+      <details class="card"><summary>I've become a consultant. Do I lose my vote?</summary><div><p>No. Your vote ends only 6 years after your PG completion date, at the end of that financial year. Your job title doesn't matter.</p></div></details>
+      <details class="card"><summary>What happens after 6 years?</summary><div><p>You continue as a Senior Member without voting rights. Annual members can keep renewing, and lifetime members pay nothing more. If you hold an office when you pass the limit, you finish that term but can't stand again.</p></div></details>
+      <details class="card"><summary>My stipend hasn't been paid. Can I still join?</summary><div><p>Yes. If your stipend has been unpaid or delayed for 3 months or more, you can join free on request, with the fee deferred.</p></div></details>
+      <details class="card"><summary>I'm a medical oncologist, pathologist or radiologist. Can I join?</summary><div><p>Yes, as an Honorary Member, on the recommendation of the President and the Executive Council. Honorary Members don't vote or hold office.</p></div></details>
+      <details class="card"><summary>Can I get a refund?</summary><div><p>Membership fees are not refundable. Annual membership lapses if it isn't renewed within 3 months of the due date.</p></div></details>
+      <details class="card"><summary>When does membership open?</summary><div><p>Once ROAR is legally registered and has a bank account in its name. <a href="index.html#join">Register your interest</a> and we'll tell you first.</p></div></details>
+    </div>
+  </div>
+</section>
+</main>
+
+<div id="site-footer"></div>
+<script src="js/layout.js"></script>
+<script src="shader.js"></script>
+<script src="main.js"></script>
+<script src="js/config.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/public.js"></script>
+</body>
+</html>

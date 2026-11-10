@@ -1,0 +1,13 @@
+# Internal documents stay off the public repository (constitution drafts, minutes)
+*.docx
+*.doc
+*.pdf
+~$*
+
+# Local tools and editor settings
+.claude/
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+.vscode/

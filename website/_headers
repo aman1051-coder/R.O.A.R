@@ -1,0 +1,11 @@
+# Netlify reads this file and adds these headers to every response.
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+
+# The Founders' console: never indexed, never cached by the browser
+/council/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store

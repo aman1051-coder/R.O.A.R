@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>National survey – ROAR</title>
+  <meta name="description" content="The ROAR National Survey of Radiation Oncologists in India: training, working conditions, wellbeing and careers. Anonymous and voluntary.">
+  <meta property="og:title" content="National Survey of Radiation Oncologists in India – ROAR">
+  <meta property="og:description" content="Anonymous, about 15 minutes. Your answers shape ROAR's programmes and the first State of Young Radiation Oncologists in India report.">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../portal/portal.css">
+  <link rel="stylesheet" href="survey.css">
+  <script src="../js/theme.js"></script>
+</head>
+<body data-page="desks" data-root="../">
+<div id="site-header"></div>
+
+<main id="main">
+  <section class="portal-wrap">
+    <div class="wrap" id="survey-root" aria-live="polite">
+      <div class="card empty-state">Loading the survey…</div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status"></div>
+<div id="site-footer"></div>
+
+<script src="../js/layout.js"></script>
+<script src="../shader.js"></script>
+<script src="../main.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/survey-def.js"></script>
+<script src="survey.js"></script>
+</body>
+</html>

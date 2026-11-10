@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contact & FAQ – ROAR</title>
+  <meta name="description" content="Contact ROAR for partnerships, media, events or opportunities, and answers to common questions.">
+  <meta property="og:title" content="Contact & FAQ – ROAR">
+  <meta property="og:description" content="Contact ROAR for partnerships, media, events or opportunities, and answers to common questions.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="js/theme.js"></script>
+</head>
+<body data-page="contact">
+<div id="site-header"></div>
+
+<main id="main">
+<section class="page-hero">
+  <div class="wrap">
+    <span class="eyebrow">Contact</span>
+    <h1>Talk to ROAR.</h1>
+    <p class="lead">Partnerships, media, events to list, opportunities to post, or a question about joining. A founder will reply.</p>
+  </div>
+</section>
+<section class="section-tight">
+  <div class="wrap contact-grid">
+    <form class="form" name="contact" method="POST" action="sent.html" data-netlify="true" netlify-honeypot="company">
+      <input type="hidden" name="form-name" value="contact">
+      <p class="hidden"><label>Leave this empty <input name="company"></label></p>
+      <div><label for="c-name">Full name</label><input id="c-name" name="name" required autocomplete="name"></div>
+      <div><label for="c-email">Email</label><input id="c-email" name="email" type="email" required autocomplete="email"></div>
+      <div class="full">
+        <label for="c-topic">Topic</label>
+        <select id="c-topic" name="topic" required>
+          <option>General question</option>
+          <option>Membership</option>
+          <option>Partnership or MoU</option>
+          <option>Media</option>
+          <option>Suggest an event</option>
+          <option>Post an opportunity</option>
+          <option>Suggest a resource</option>
+        </select>
+      </div>
+      <div class="full"><label for="c-message">Message</label><textarea id="c-message" name="message" required maxlength="5000"></textarea></div>
+      <div class="full check"><input id="c-consent" name="consent" type="checkbox" value="yes" required><label for="c-consent">ROAR may store these details to reply to me. See the <a href="privacy.html">privacy note</a>.</label></div>
+      <div class="full"><button class="btn btn-primary" type="submit">Send message</button></div>
+    </form>
+    <aside>
+      <div class="card help-now" style="margin-bottom:18px">
+        <h3>Raising a grievance?</h3>
+        <p>Please don't send complaints about training, pay or mistreatment through this form. The confidential <a href="desks.html">support desks</a> open after registration, with stronger protection for your identity.</p>
+      </div>
+      <div class="faq">
+        <details class="card"><summary>Is ROAR registered?</summary><div><p>Registration as a Society in New Delhi is under way. Until it's complete, ROAR doesn't collect fees or open membership.</p></div></details>
+        <details class="card"><summary>Does ROAR work with other societies?</summary><div><p>Yes. ROAR is independent and seeks to collaborate with national and international radiation oncology societies through MoUs, joint sessions and shared resources. <a href="about.html#partners">More about partnerships</a>.</p></div></details>
+        <details class="card"><summary>Can companies sponsor ROAR?</summary><div><p>Only through unrestricted educational grants. Sponsors have no say over content, faculty, elections or advocacy, and every sponsorship is published in the annual report.</p></div></details>
+        <details class="card"><summary>How do I become an ambassador?</summary><div><p>Tick the ambassador box on the <a href="index.html#join">interest form</a>. One resident is appointed in every training institution.</p></div></details>
+      </div>
+    </aside>
+  </div>
+</section>
+</main>
+
+<div id="site-footer"></div>
+<script src="js/layout.js"></script>
+<script src="shader.js"></script>
+<script src="main.js"></script>
+<script src="js/config.js"></script>
+<script src="js/public.js"></script>
+</body>
+</html>

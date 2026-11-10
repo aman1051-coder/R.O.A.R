@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Member portal – ROAR</title>
+  <meta name="description" content="Apply for ROAR membership, see your membership card and voting window, and vote in ROAR ballots.">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="portal.css">
+  <script src="../js/theme.js"></script>
+</head>
+<body data-page="portal" data-root="../">
+<div id="site-header"></div>
+
+<main id="main">
+  <div id="portal-tabs" class="area-wrap" hidden></div>
+  <section class="portal-wrap">
+    <div class="wrap" id="portal-root" aria-live="polite">
+      <div class="card empty-state">Loading…</div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status"></div>
+<div id="site-footer"></div>
+
+<script src="../js/layout.js"></script>
+<script src="../shader.js"></script>
+<script src="../main.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/rules.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="../council/demo-seed.js"></script>
+<script src="portal.js"></script>
+</body>
+</html>
