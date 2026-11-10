@@ -3,8 +3,8 @@
 // The anon key is designed to be public; the database's security rules protect the data.
 // While these are empty, the website uses Netlify Forms and the Founders' console runs in DEMO mode.
 window.ROAR_CONFIG = {
-  supabaseUrl: '',
-  supabaseAnonKey: '',
+  supabaseUrl: 'https://yngnekccjfhgtpbaifdl.supabase.co',
+  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluZ25la2NjamZoZ3RwYmFpZmRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzMzQ4MjUsImV4cCI6MjEwOTkxMDgyNX0.ktEhUS_AqMNJY2U0CusSeNLZ0WrgRlJAKPfJlUx1Y58',
   // Founders sign in with a username; this is the domain of their Supabase login address (see SETUP.md)
   founderLoginDomain: 'founders.roar.invalid'
 };
