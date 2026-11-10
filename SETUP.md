@@ -39,14 +39,9 @@ Go to **Authentication → URL Configuration**:
 - **Site URL:** `https://YOUR-SITE.netlify.app/portal/`
 - **Redirect URLs:** add both `https://YOUR-SITE.netlify.app/portal/` and `https://YOUR-SITE.netlify.app/council/`, plus the same two on your own domain later.
 
-## 5. Create the nine founder logins
+## 5. The nine founder logins
 
-Founders sign in to the console with a **username** (or their Founder ID). The first time, they choose their own password; after that, they always sign in with it. Only these nine accounts can open the console.
-
-For each founder, go to **Authentication → Users → Add user → Create new user**:
-- **Email:** their username followed by `@founders.roar.invalid`, for example `aakash.bellige@founders.roar.invalid`. The `.invalid` domain is reserved and can never receive mail.
-- **Password:** type any long random text. Nobody needs to know it, because the founder replaces it at their first sign-in.
-- Tick **Auto Confirm User**.
+Nothing to do here: running `schema.sql` in step 2 creates a login for each of the nine founders, with a random password nobody knows. Founders sign in to the console with a **username** (or their Founder ID) and claim their account by choosing their own password the first time. Only these nine accounts can open the console.
 
 | Founder ID | Founder | Username |
 |---|---|---|
@@ -69,8 +64,6 @@ For each founder, go to **Authentication → Users → Add user → Create new u
 - **Set a new password**, then pass it on by phone.
 
 To give this power to someone else later, change `can_reset_passwords` for that founder in Supabase (**Table Editor → founders**).
-
-> If Supabase refuses the `.invalid` address, use any address ROAR controls instead (for example `founders+aakash@roarindia.org`). Then set `founderLoginDomain` in `website/js/config.js` and the `email` values in the FOUNDERS block to match.
 
 **Everyone else** (residents, members, mentors) creates their own account in the member portal at `/portal/`. Those accounts can use the members' area (Education, Careers, Welfare and their membership) but can never open the console.
 
@@ -160,4 +153,4 @@ To change who is an admin, edit the founder in the console's **Founders** page.
 
 This covers, for example, a past President filling a vacancy under Article 15A.
 1. An admin adds them on the console's **Founders** page, with a Founder ID and username.
-2. Create their login in Supabase as in step 5 (`<username>@founders.roar.invalid`, any random password, Auto Confirm User). They choose their own password at their first sign-in.
+2. Their login is created automatically. They claim it by choosing their own password at their first sign-in.

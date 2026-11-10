@@ -883,3 +883,50 @@ begin
       group by choice) t));
 end $$;
 grant execute on function public.poll_results(text) to anon, authenticated;
+
+-- =====================================================================
+-- PART 10: create the founders' logins
+-- Creates a Supabase login for every founder on the list who doesn't have one yet,
+-- with a random password nobody knows. Each founder then claims their account by
+-- choosing their own password at their first sign-in (PART 8).
+-- Safe to run again: it only adds logins that are missing.
+-- =====================================================================
+insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+                        raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+                        confirmation_token, email_change, email_change_token_new, recovery_token)
+select '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated', f.email,
+       crypt(gen_random_uuid()::text || clock_timestamp()::text, gen_salt('bf')), now(),
+       '{"provider":"email","providers":["email"]}'::jsonb, jsonb_build_object('name', f.name, 'founder_id', f.founder_id),
+       now(), now(), '', '', '', ''
+from public.founders f
+where not exists (select 1 from auth.users u where lower(u.email) = f.email);
+
+insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+select gen_random_uuid(), u.id, u.id::text,
+       jsonb_build_object('sub', u.id::text, 'email', u.email, 'email_verified', true),
+       'email', now(), now(), now()
+from auth.users u
+join public.founders f on lower(u.email) = f.email
+where not exists (select 1 from auth.identities i where i.user_id = u.id and i.provider = 'email');
+
+-- Founders who are added later (e.g. a past President filling a vacancy) get a login automatically
+create or replace function public.create_founder_login() returns trigger
+language plpgsql security definer set search_path = public, extensions as $$
+declare uid uuid;
+begin
+  if exists (select 1 from auth.users where lower(email) = new.email) then return new; end if;
+  uid := gen_random_uuid();
+  insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+                          raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+                          confirmation_token, email_change, email_change_token_new, recovery_token)
+  values ('00000000-0000-0000-0000-000000000000', uid, 'authenticated', 'authenticated', new.email,
+          crypt(gen_random_uuid()::text || clock_timestamp()::text, gen_salt('bf')), now(),
+          '{"provider":"email","providers":["email"]}'::jsonb, jsonb_build_object('name', new.name, 'founder_id', new.founder_id),
+          now(), now(), '', '', '', '');
+  insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+  values (gen_random_uuid(), uid, uid::text, jsonb_build_object('sub', uid::text, 'email', new.email, 'email_verified', true), 'email', now(), now(), now());
+  return new;
+end $$;
+drop trigger if exists founders_create_login on public.founders;
+create trigger founders_create_login after insert on public.founders
+  for each row execute function public.create_founder_login();
