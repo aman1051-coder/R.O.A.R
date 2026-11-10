@@ -177,16 +177,19 @@
 
   // Tabs of the members' area. Every signed-in account gets Education and Careers help;
   // the membership tab holds the application, card and ballots.
-  const TABS = [['membership', 'My membership'], ['education', 'Education'], ['careers', 'Careers'], ['welfare', 'Welfare']];
+  const TABS = [['membership', 'My membership'], ['community', 'Community'], ['education', 'Education'], ['careers', 'Careers'], ['welfare', 'Welfare']];
   const tabsEl = document.getElementById('portal-tabs');
-  const currentTab = () => { const t = location.hash.replace('#', ''); return TABS.some(x => x[0] === t) ? t : 'membership'; };
+  const route = () => location.hash.replace('#', '').split('/');
+  const currentTab = () => { const t = route()[0]; return TABS.some(x => x[0] === t) ? t : 'membership'; };
+  const FOUNDER_DOMAIN = '@' + (cfg.founderLoginDomain || 'founders.roar.invalid');
+  const shownName = s => s.email.endsWith(FOUNDER_DOMAIN) ? s.email.slice(0, -FOUNDER_DOMAIN.length) : s.email;
   function drawTabs() {
     if (!sess) { tabsEl.hidden = true; return; }
     tabsEl.hidden = false;
     const t = currentTab();
     tabsEl.innerHTML = `<div class="wrap area-bar">
       <nav class="area-tabs" aria-label="Members' area">${TABS.map(([k, l]) => `<a href="#${k}"${k === t ? ' class="on" aria-current="page"' : ''}>${l}</a>`).join('')}</nav>
-      <div class="area-user"><span>${esc(sess.email)}</span><button class="btn btn-glass small" id="tab-out">Sign out</button></div>
+      <div class="area-user"><span>${esc(shownName(sess))}</span><button class="btn btn-glass small" id="tab-out">Sign out</button></div>
     </div>`;
     tabsEl.querySelector('#tab-out').addEventListener('click', async () => { await API.signOut(); location.hash = ''; render(); });
   }
@@ -202,12 +205,23 @@
       if (tab === 'education') return educationView();
       if (tab === 'careers') return careersView();
       if (tab === 'welfare') return welfareView();
+      if (tab === 'community') {
+        isFounder = await API.amFounder(sess);
+        if (!window.ROAR_COMMUNITY) throw new Error('Community failed to load. Refresh the page.');
+        return window.ROAR_COMMUNITY.view(portalCtx, route().slice(1));
+      }
       member = await API.me(sess);
       isFounder = await API.amFounder(sess);
       if (!member) return (await API.membershipOpen()) ? wizard() : closedView();
       return dashboard();
     } catch (e) { fail(e); root.innerHTML = `<div class="card empty-state">Couldn't load the portal: ${esc(e.message || e)}</div>`; }
   }
+
+  // Shared with community.js
+  const portalCtx = {
+    LIVE, cfg, sb, Demo, root, esc, toast, fail, fmt, fmtTime, uid, rerender: () => render(),
+    get sess() { return sess; }, get isFounder() { return isFounder; },
+  };
 
   // ===================================================================
   // Members' area: Education
@@ -364,7 +378,7 @@
         <button type="button" class="${mode === 'signup' ? 'on' : ''}" data-mode="signup">Create account</button></div>` : '<p class="muted">We\'ll email you a link.</p>'}
       <form id="auth-form" novalidate>
         ${mode === 'signup' ? '<div class="row one"><div><label for="a-name">Full name</label><input id="a-name" required autocomplete="name"></div></div>' : ''}
-        ${mode !== 'newpass' ? '<div class="row one"><div><label for="a-email">Email</label><input id="a-email" type="email" required autocomplete="email"></div></div>' : ''}
+        ${mode !== 'newpass' ? `<div class="row one"><div><label for="a-email">${mode === 'signin' ? 'Email (founders: your username)' : 'Email'}</label><input id="a-email" type="${mode === 'signin' ? 'text' : 'email'}" required autocomplete="${mode === 'signin' ? 'username' : 'email'}" autocapitalize="none" spellcheck="false"></div></div>` : ''}
         ${mode !== 'reset' ? `<div class="row one"><div><label for="a-pass">${mode === 'signin' ? 'Password' : 'Password (at least 10 characters)'}</label><input id="a-pass" type="password" required minlength="${mode === 'signin' ? 1 : 10}" autocomplete="${mode === 'signin' ? 'current-password' : 'new-password'}"></div></div>` : ''}
         <button class="btn btn-primary wide" type="submit">${{ signin: 'Sign in', signup: 'Create account', reset: 'Send reset link', newpass: 'Save password' }[mode]}</button>
         <p class="msg" id="a-msg" role="status"></p>
@@ -372,14 +386,15 @@
       ${mode === 'signin' ? '<p style="margin:6px 0 0;font-size:.9rem"><button class="linklike" data-mode="reset">Forgot your password?</button></p>' : ''}
       ${mode === 'reset' ? '<p style="margin:6px 0 0;font-size:.9rem"><button class="linklike" data-mode="signin">Back to sign in</button></p>' : ''}
       <div class="divider">Founders</div>
-      <p class="muted" style="font-size:.88rem;margin:0">Founders manage ROAR in the <a href="../council/">Founders' console</a>. To vote in ballots, founders also create a member account here.</p>
+      <p class="muted" style="font-size:.88rem;margin:0">Founders sign in here with the same username and password as the <a href="../council/">Founders' console</a>. Set your password in the console first.</p>
     </div>`;
     root.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => authView(b.dataset.mode)));
     const msg = (t, k) => { const el = $('#a-msg'); el.textContent = t; el.className = 'msg ' + (k || ''); };
     $('#auth-form').addEventListener('submit', async ev => {
       ev.preventDefault();
       if (!ev.target.reportValidity()) return;
-      const email = ($('#a-email') || {}).value?.trim().toLowerCase();
+      let email = ($('#a-email') || {}).value?.trim().toLowerCase();
+      if (email && mode === 'signin' && !email.includes('@')) email += FOUNDER_DOMAIN;   // founders sign in with their username
       const pass = ($('#a-pass') || {}).value;
       try {
         msg('Please wait…');
@@ -393,7 +408,7 @@
 
   function wantedSection() {
     const t = location.hash.replace('#', '');
-    const label = { education: 'Education', careers: 'Careers', welfare: 'Welfare' }[t];
+    const label = { education: 'Education', careers: 'Careers', welfare: 'Welfare', community: 'ROAR Community' }[t.split('/')[0]];
     return label ? `<div class="notice">${label} is for members. Sign in, or create a free account, to continue.</div>` : '';
   }
 

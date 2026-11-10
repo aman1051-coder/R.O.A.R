@@ -23,6 +23,7 @@
     ] },
     { key: 'events', label: 'Events', href: 'events.html' },
     // Members' sections: the pages are short previews; the content is in the member portal
+    { key: 'community', label: 'Community', href: 'portal/#community', members: true },
     { key: 'learn', label: 'Education', href: 'learn.html', members: true },
     { key: 'opportunities', label: 'Careers', href: 'opportunities.html', members: true },
     { key: 'desks', label: 'Welfare', href: 'desks.html', members: true },
@@ -99,6 +100,7 @@
           <ul>
             <li><a href="${root}events.html">Events calendar</a></li>
             <li><a href="${root}opportunities.html">Careers &amp; fellowships</a></li>
+            <li><a href="${root}portal/#community">ROAR Community</a></li>
             <li><a href="${root}learn.html">Learning library</a></li>
             <li><a href="${root}desks.html">Member welfare</a></li>
             <li><a href="${root}portal/">Member login</a></li>

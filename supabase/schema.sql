@@ -930,3 +930,170 @@ end $$;
 drop trigger if exists founders_create_login on public.founders;
 create trigger founders_create_login after insert on public.founders
   for each row execute function public.create_founder_login();
+
+-- =====================================================================
+-- PART 11: ROAR Community (members' social space)
+-- Profiles with unique usernames and profile pictures, posts with photos,
+-- comments, likes, and reports. Visible only to signed-in accounts.
+-- Founders moderate (hide posts and comments, review reports).
+-- If you already ran an earlier version of this file, run only from here to the end.
+-- =====================================================================
+create table if not exists public.profiles (
+  id            uuid primary key references auth.users(id) on delete cascade default auth.uid(),
+  username      text not null check (username ~ '^[a-z0-9._]{3,30}$'),
+  display_name  text not null check (char_length(display_name) between 2 and 80),
+  bio           text check (char_length(bio) <= 500),
+  institution   text check (char_length(institution) <= 200),
+  stage         text check (char_length(stage) <= 80),        -- e.g. "PG resident, year 2"
+  avatar_path   text,                                         -- in the private 'community' bucket
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+create unique index if not exists profiles_username_key on public.profiles (lower(username));
+
+create table if not exists public.posts (
+  id          uuid primary key default gen_random_uuid(),
+  author_id   uuid not null default auth.uid() references public.profiles(id) on delete cascade,
+  kind        text not null default 'general' check (kind in ('question','article','case','news','general')),
+  title       text check (char_length(title) <= 200),
+  body        text not null check (char_length(body) between 1 and 10000),
+  image_paths text[] not null default '{}' check (cardinality(image_paths) <= 4),
+  link_url    text check (link_url is null or link_url ~* '^https?://'),
+  created_at  timestamptz not null default now(),
+  edited_at   timestamptz,
+  hidden      boolean not null default false,                 -- set by founders (moderation)
+  hidden_reason text
+);
+create index if not exists posts_created_idx on public.posts (created_at desc);
+create index if not exists posts_author_idx on public.posts (author_id, created_at desc);
+
+create table if not exists public.comments (
+  id         uuid primary key default gen_random_uuid(),
+  post_id    uuid not null references public.posts(id) on delete cascade,
+  author_id  uuid not null default auth.uid() references public.profiles(id) on delete cascade,
+  body       text not null check (char_length(body) between 1 and 3000),
+  created_at timestamptz not null default now(),
+  hidden     boolean not null default false
+);
+create index if not exists comments_post_idx on public.comments (post_id, created_at);
+
+create table if not exists public.post_likes (
+  post_id    uuid not null references public.posts(id) on delete cascade,
+  user_id    uuid not null default auth.uid() references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (post_id, user_id)
+);
+
+create table if not exists public.post_reports (
+  id          uuid primary key default gen_random_uuid(),
+  post_id     uuid references public.posts(id) on delete cascade,
+  comment_id  uuid references public.comments(id) on delete cascade,
+  reporter_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  reason      text not null check (reason in ('Patient privacy','Harassment or disrespect','Misinformation','Spam or advertising','Other')),
+  details     text check (char_length(details) <= 1000),
+  status      text not null default 'open' check (status in ('open','resolved')),
+  created_at  timestamptz not null default now(),
+  check (post_id is not null or comment_id is not null)
+);
+
+-- Badges shown next to names: Founder (Founders' Council) and Member (approved membership)
+create or replace function public.community_badges(p_user uuid) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'founder', exists (select 1 from auth.users u join public.founders f on f.email = lower(u.email) where u.id = p_user),
+    'founder_id', (select f.founder_id from auth.users u join public.founders f on f.email = lower(u.email) where u.id = p_user),
+    'member', exists (select 1 from public.members m where m.user_id = p_user and m.status = 'approved'))
+$$;
+grant execute on function public.community_badges(uuid) to authenticated;
+-- The same for many people at once (one call per page of the feed): { "<user id>": {founder, founder_id, member} }
+create or replace function public.community_badges_for(p_users uuid[]) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select coalesce(jsonb_object_agg(u.id, jsonb_build_object(
+    'founder', f.founder_id is not null,
+    'founder_id', f.founder_id,
+    'member', exists (select 1 from public.members m where m.user_id = u.id and m.status = 'approved'))), '{}'::jsonb)
+  from auth.users u left join public.founders f on f.email = lower(u.email)
+  where u.id = any(p_users) and auth.uid() is not null
+$$;
+grant execute on function public.community_badges_for(uuid[]) to authenticated;
+
+-- Members can't hide or un-hide their own content; only founders can
+create or replace function public.protect_community_fields() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if public.is_founder() then return new; end if;
+  if tg_op = 'INSERT' then
+    new.hidden := false;
+    if tg_table_name = 'posts' then new.hidden_reason := null; new.edited_at := null; end if;
+    return new;
+  end if;
+  new.hidden := old.hidden;
+  new.author_id := old.author_id;
+  new.created_at := old.created_at;
+  if tg_table_name = 'posts' then new.hidden_reason := old.hidden_reason; new.edited_at := now(); end if;
+  return new;
+end $$;
+drop trigger if exists posts_protect on public.posts;
+create trigger posts_protect before insert or update on public.posts for each row execute function public.protect_community_fields();
+drop trigger if exists comments_protect on public.comments;
+create trigger comments_protect before insert or update on public.comments for each row execute function public.protect_community_fields();
+
+alter table public.profiles     enable row level security;
+alter table public.posts        enable row level security;
+alter table public.comments     enable row level security;
+alter table public.post_likes   enable row level security;
+alter table public.post_reports enable row level security;
+
+drop policy if exists profiles_read  on public.profiles;
+drop policy if exists profiles_own   on public.profiles;
+drop policy if exists profiles_edit  on public.profiles;
+drop policy if exists profiles_del   on public.profiles;
+create policy profiles_read on public.profiles for select to authenticated using (auth.uid() is not null);
+create policy profiles_own  on public.profiles for insert to authenticated with check (id = auth.uid());
+create policy profiles_edit on public.profiles for update to authenticated using (id = auth.uid() or public.is_founder()) with check (id = auth.uid() or public.is_founder());
+create policy profiles_del  on public.profiles for delete to authenticated using (id = auth.uid() or public.is_founder());
+
+drop policy if exists posts_read   on public.posts;
+drop policy if exists posts_insert on public.posts;
+drop policy if exists posts_update on public.posts;
+drop policy if exists posts_delete on public.posts;
+create policy posts_read   on public.posts for select to authenticated using (not hidden or author_id = auth.uid() or public.is_founder());
+create policy posts_insert on public.posts for insert to authenticated with check (author_id = auth.uid());
+create policy posts_update on public.posts for update to authenticated using (author_id = auth.uid() or public.is_founder()) with check (true);
+create policy posts_delete on public.posts for delete to authenticated using (author_id = auth.uid() or public.is_founder());
+
+drop policy if exists comments_read   on public.comments;
+drop policy if exists comments_insert on public.comments;
+drop policy if exists comments_update on public.comments;
+drop policy if exists comments_delete on public.comments;
+create policy comments_read   on public.comments for select to authenticated using (not hidden or author_id = auth.uid() or public.is_founder());
+create policy comments_insert on public.comments for insert to authenticated with check (author_id = auth.uid()
+  and exists (select 1 from public.posts p where p.id = post_id and not p.hidden));
+create policy comments_update on public.comments for update to authenticated using (author_id = auth.uid() or public.is_founder()) with check (true);
+create policy comments_delete on public.comments for delete to authenticated using (author_id = auth.uid() or public.is_founder());
+
+drop policy if exists likes_read   on public.post_likes;
+drop policy if exists likes_insert on public.post_likes;
+drop policy if exists likes_delete on public.post_likes;
+create policy likes_read   on public.post_likes for select to authenticated using (auth.uid() is not null);
+create policy likes_insert on public.post_likes for insert to authenticated with check (user_id = auth.uid());
+create policy likes_delete on public.post_likes for delete to authenticated using (user_id = auth.uid());
+
+drop policy if exists reports_insert   on public.post_reports;
+drop policy if exists reports_founders on public.post_reports;
+create policy reports_insert on public.post_reports for insert to authenticated with check (reporter_id = auth.uid() and status = 'open');
+create policy reports_founders on public.post_reports for all using (public.is_founder()) with check (public.is_founder());
+
+-- Private photo storage: anyone signed in can view; you can add or remove only your own files
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('community', 'community', false, 3145728, array['image/jpeg','image/png','image/webp'])
+on conflict (id) do nothing;
+drop policy if exists community_read   on storage.objects;
+drop policy if exists community_insert on storage.objects;
+drop policy if exists community_delete on storage.objects;
+create policy community_read on storage.objects for select to authenticated
+  using (bucket_id = 'community' and auth.uid() is not null);
+create policy community_insert on storage.objects for insert to authenticated
+  with check (bucket_id = 'community' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy community_delete on storage.objects for delete to authenticated
+  using (bucket_id = 'community' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_founder()));

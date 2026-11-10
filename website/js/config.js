@@ -19,3 +19,9 @@ window.ROAR_DEMO_OK = (function () {
     return sessionStorage.getItem('roar-demo') === '1';
   } catch (e) { return false; }
 })();
+
+// Developers only: on your own computer, add ?offline to the address to use the demo data
+// instead of the live database (e.g. http://localhost:8790/portal/?offline).
+if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && /[?&]offline\b/.test(location.search)) {
+  window.ROAR_CONFIG.supabaseUrl = ''; window.ROAR_CONFIG.supabaseAnonKey = '';
+}

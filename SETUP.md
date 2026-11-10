@@ -86,9 +86,19 @@ The portal accepts sign-ups from day one, but applications stay **closed** until
 
 ## The members' area
 
-Every account created in the member portal gets three tabs: **My membership** (their application, card and ballots), **Education**, and **Careers help**.
+Every account created in the member portal gets five tabs: **My membership** (their application, card and ballots), **Community**, **Education**, **Careers help** and **Welfare**. Founders can sign in to the portal too, with the same username and password they use for the console.
 - **Members-only content:** in the console, tick **Members only** on a learning resource, event or career listing. It then appears in the members' area and is hidden from the public website.
 - **Career help requests:** requests for CV reviews, fellowship or job guidance, exam help, observership placements and research mentoring arrive in the console's **Career help** page. Assign each to a founder or mentor, reply by email, and close it when done.
+
+## ROAR Community
+
+A members-only social space in the portal (`/portal/#community`). Only signed-in accounts can see anything in it; the public website shows none of it.
+- **Profiles:** everyone (founders included) creates a profile the first time they open Community: a unique **@username**, display name, stage of training, institution, a short bio and a **profile picture** they upload themselves. Founders get a **Founder** badge with their Founder ID; approved members get a **Member** badge.
+- **Posts:** questions, articles, case discussions, news or general posts, each with up to 4 photos and a link. Others can like, comment (or answer, for questions) and report. Every profile has a grid of that person's posts.
+- **Photos** are resized in the browser and their location data is removed before upload. They're kept in a private storage bucket (`community`) that only signed-in accounts can read.
+- **Patient privacy:** anyone posting photos or a case must confirm that nothing could identify a patient.
+- **Moderation:** reports arrive in the console's **Community** page. Founders can hide a post or comment (the author still sees it, with the reason), unhide it, or delete it. Founders can also hide or delete straight from the portal. Reporters' names are visible only to the Founders' Council.
+- **Setting it up:** run schema PART 11. If the rest of the schema is already in place, paste and run only PART 11 (from its heading to the end of the file).
 
 ## Running a ballot
 
@@ -113,29 +123,6 @@ National surveys and polls are created and run from the console's **Surveys & po
 - **Responses:** charts per question, filters by respondent group, and **Export CSV**. Never report results for groups of fewer than 5.
 - **National survey:** the first national survey's draft is built in. Click **Add the national survey draft** on the Surveys & polls page to edit and open it. If you plan to publish the results in a journal, get approval from an Institutional Ethics Committee before opening it.
 
-## The members' area
-
-Every account created in the member portal gets three tabs: **My membership** (their application, card and ballots), **Education**, and **Careers help**.
-- **Members-only content:** in the console, tick **Members only** on a learning resource, event or career listing. It then appears in the members' area and is hidden from the public website.
-- **Career help requests:** requests for CV reviews, fellowship or job guidance, exam help, observership placements and research mentoring arrive in the console's **Career help** page. Assign each to a founder or mentor, reply by email, and close it when done.
-
-## Running a ballot
-
-In **Elections & ballots**, create a ballot as a draft, add the choices, set when voting opens and closes, then set it to **Open**. It appears in every approved member's portal.
-- **Poll / referendum:** every member within the voting window, with their fee paid, can vote.
-- **Election:** Article 23 also applies. Members must have joined at least 60 days before polling and must confirm their PG dates (the portal asks them), and voting must stay open for at least 72 hours.
-- Results appear only after you set the ballot to **Closed**. Turnout is visible to founders throughout.
-- **Electoral roll CSV** in **Members** downloads everyone eligible to vote today.
-
-## Running the national survey
-
-The questionnaire lives in [`website/js/survey-def.js`](website/js/survey-def.js). Founders can read the whole thing at `/survey/?review=1` and print it or save it as a PDF.
-1. Agree the final questions, then change `version` in that file (for example to `1.0`).
-2. If you plan to publish the results in a journal, get approval from an Institutional Ethics Committee first. The survey's consent screen is written with that in mind.
-3. In the console, go to **National survey** and click **Open survey**. Only admin founders can do this.
-4. Share the link `/survey/`. Responses are anonymous: no name, email or IP address is stored, only the date.
-5. Watch results in the console, and download them with **Export CSV**. Never report a group with fewer than 5 responses.
-
 ## Who can do what
 
 | | Any founder | Admin founder (President, Chairman, General Secretary) |
@@ -146,6 +133,7 @@ The questionnaire lives in [`website/js/survey-def.js`](website/js/survey-def.js
 | Verify members, record payments, run ballots | ✓ | ✓ |
 | Open or close membership applications | | ✓ |
 | Add or remove founders | | ✓ |
+| Moderate ROAR Community (hide, unhide or delete posts; read reports) | ✓ | ✓ |
 
 To change who is an admin, edit the founder in the console's **Founders** page.
 

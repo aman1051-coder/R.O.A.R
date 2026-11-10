@@ -394,6 +394,7 @@
     library: '<path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5z"/><path d="M8 7h6"/>',
     members: '<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.8-1.8 2-2.6 3.5-2.6s2.7.8 3.5 2.6M15 9h3M15 13h3"/>',
     help: '<path d="M12 21a9 9 0 1 0-9-9c0 1.7.5 3.3 1.3 4.7L3 21l4.4-1.2A9 9 0 0 0 12 21z"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.3M12 17h.01"/>',
+    community: '<circle cx="12" cy="8" r="3.2"/><circle cx="5.5" cy="10" r="2.3"/><circle cx="18.5" cy="10" r="2.3"/><path d="M6.5 20c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5M1.5 19c.3-2 1.6-3.3 3.6-3.5M22.5 19c-.3-2-1.6-3.3-3.6-3.5"/>',
     surveys: '<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>',
     elections: '<path d="M4 21h16M6 17V8l6-5 6 5v9"/><path d="M9.5 12l2 2 3.5-3.5"/>',
     inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/>',
@@ -405,7 +406,7 @@
   const VIEWS = [
     ['overview', 'Overview'], ['tracker', 'Launch tracker'], ['motions', 'Motions & votes'], ['meetings', 'Meetings & minutes'],
     ['section:Membership'],
-    ['members', 'Members'], ['help', 'Career help'], ['elections', 'Elections & ballots'], ['surveys', 'Surveys & polls'], ['registrations', 'Interest list'], ['ambassadors', 'Ambassadors'],
+    ['members', 'Members'], ['help', 'Career help'], ['elections', 'Elections & ballots'], ['surveys', 'Surveys & polls'], ['community', 'Community'], ['registrations', 'Interest list'], ['ambassadors', 'Ambassadors'],
     ['section:Public website'],
     ['inbox', 'Inbox'], ['announcements', 'News'], ['events', 'Events'], ['opportunities', 'Opportunities'], ['resources', 'Learning resources'],
     ['section:Council'],
