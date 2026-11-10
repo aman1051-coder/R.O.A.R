@@ -92,13 +92,37 @@ Every account created in the member portal gets five tabs: **My membership** (th
 
 ## ROAR Community
 
-A members-only social space in the portal (`/portal/#community`). Only signed-in accounts can see anything in it; the public website shows none of it.
-- **Profiles:** everyone (founders included) creates a profile the first time they open Community: a unique **@username**, display name, stage of training, institution, a short bio and a **profile picture** they upload themselves. Founders get a **Founder** badge with their Founder ID; approved members get a **Member** badge.
-- **Posts:** questions, articles, case discussions, news or general posts, each with up to 4 photos and a link. Others can like, comment (or answer, for questions) and report. Every profile has a grid of that person's posts.
-- **Photos** are resized in the browser and their location data is removed before upload. They're kept in a private storage bucket (`community`) that only signed-in accounts can read.
-- **Patient privacy:** anyone posting photos or a case must confirm that nothing could identify a patient.
-- **Moderation:** reports arrive in the console's **Community** page. Founders can hide a post or comment (the author still sees it, with the reason), unhide it, or delete it. Founders can also hide or delete straight from the portal. Reporters' names are visible only to the Founders' Council.
-- **Setting it up:** run schema PART 11. If the rest of the schema is already in place, paste and run only PART 11 (from its heading to the end of the file).
+A members-only social space in the portal (`/portal/#community`) that brings together the best of Instagram, Reddit and Twitter. Only signed-in accounts can see anything in it; the public website shows none of it.
+
+- **Profiles:** everyone (founders included) creates a profile the first time they open Community, with:
+  - a unique **@username**;
+  - a display name, stage of training, institution and a short bio;
+  - a **profile picture** they upload themselves.
+
+  Founders get a **Founder** badge with their Founder ID; approved members get a **Member** badge. A profile shows posts, followers and following, an Instagram-style grid of posts, a list view, and (for you only) your **Saved** posts.
+- **Home feed:** **For you** ranks recent posts by likes, comments and quotes, and favours people you follow. **Following** shows only people you follow. **Latest** is newest first, and **Top this week** shows the most discussed posts.
+- **Posts** can be:
+  - a question, article, case discussion, news or a general post;
+  - filed under a **topic** (Head & Neck, Breast, SBRT & SRS, Physics & Planning, Exams & Training, Careers, Wellbeing and others);
+  - given up to 4 **photos** (a swipeable carousel, double-tap to like), a **poll** of 2–4 choices lasting 1 day to 1 week, a link, or a **quote** of another post.
+
+  Writing `#hashtags` and `@usernames` in a post makes them links. A mentioned person is notified.
+- **Answers and replies:** comments are threaded, so you can reply to a reply. They can be voted up or down. On a question, the person who asked can mark one answer as **accepted**.
+- **Stories:** a photo with a caption that disappears after 24 hours. They appear in a row at the top of Home, and on the person's profile picture.
+- **Explore:** search people, posts and hashtags, browse the topics, and see trending hashtags and recent photos. Each topic has its own page with Hot, New and Top sorting.
+- **Notifications:** likes, comments, replies, mentions, quotes, new followers and accepted answers. They're created by the database itself, so nobody can fake one.
+- **Privacy:**
+  - Photos are resized in the browser and their location data is removed before upload. They're kept in a private storage bucket (`community`) that only signed-in accounts can read.
+  - Poll votes are secret: people see only the totals.
+  - Saved posts are private.
+  - Anyone posting photos or a case must confirm that nothing could identify a patient.
+- **Moderation:** founders can:
+  - **pin** a post to the top of Home;
+  - hide or unhide any post or comment (the author still sees it, with the reason);
+  - delete posts, comments and stories.
+
+  Reports arrive in the console's **Community** page, and reporters' names are visible only to the Founders' Council.
+- **Setting it up:** run schema PARTs 11 and 12. If the rest of the schema is already in place, paste and run only those parts (from the PART 11 heading to the end of the file).
 
 ## Running a ballot
 

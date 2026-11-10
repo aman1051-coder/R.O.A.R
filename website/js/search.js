@@ -31,6 +31,8 @@
     ['News', 'news.html', 'news announcements updates statements'],
     ['Contact & FAQ', 'contact.html', 'contact email partnership media suggest event post opportunity question'],
     ['ROAR Community (members)', 'portal/#community', 'community social feed posts questions ask answer articles case discussion photos profile username profile picture members network forum discussion'],
+    ['Community: Explore topics and hashtags', 'portal/#community/explore', 'explore search people hashtags trending topics head and neck breast sbrt srs brachytherapy physics contouring exams careers research wellbeing'],
+    ['Community: Notifications', 'portal/#community/notifications', 'notifications likes replies mentions followers'],
     ['Members area: Education', 'portal/#education', 'members education recordings case files contour club sessions members only library'],
     ['Members area: Careers help', 'portal/#careers', 'career help CV review fellowship guidance job search exam preparation observership placement research mentorship mentor'],
     ['Member portal', 'portal/', 'member login sign in apply application membership card ballots vote'],

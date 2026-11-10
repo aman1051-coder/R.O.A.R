@@ -1097,3 +1097,264 @@ create policy community_insert on storage.objects for insert to authenticated
   with check (bucket_id = 'community' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy community_delete on storage.objects for delete to authenticated
   using (bucket_id = 'community' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_founder()));
+
+-- =====================================================================
+-- PART 12: ROAR Community, second release
+-- Topics, hashtags, quote posts, polls, pinned posts and accepted answers on posts;
+-- threaded replies and up/down votes on comments; follows, saved posts, 24-hour stories
+-- and notifications. Needs PART 11. Safe to run again. If the rest is already in place,
+-- run only from here to the end.
+-- =====================================================================
+alter table public.posts add column if not exists topic text not null default 'general';
+alter table public.posts drop constraint if exists posts_topic_check;
+alter table public.posts add constraint posts_topic_check check (topic in ('general','headneck','breast','cns','thoracic','gi','gu','gynae','heme','paeds','palliative','sbrt','brachy','physics','contouring','exams','careers','research','wellbeing'));
+alter table public.posts add column if not exists hashtags text[] not null default '{}';
+alter table public.posts add column if not exists quote_of uuid references public.posts(id) on delete set null;
+alter table public.posts add column if not exists poll jsonb;     -- {"options": ["A","B"], "ends_at": "..."}
+alter table public.posts drop constraint if exists posts_poll_check;
+alter table public.posts add constraint posts_poll_check check (poll is null or (jsonb_typeof(poll->'options') = 'array' and jsonb_array_length(poll->'options') between 2 and 4));
+alter table public.posts add column if not exists pinned boolean not null default false;   -- founders only
+alter table public.posts add column if not exists accepted_comment_id uuid references public.comments(id) on delete set null;
+create index if not exists posts_hashtags_idx on public.posts using gin (hashtags);
+create index if not exists posts_topic_idx on public.posts (topic, created_at desc);
+create index if not exists posts_quote_idx on public.posts (quote_of);
+
+alter table public.comments add column if not exists parent_id uuid references public.comments(id) on delete cascade;
+create index if not exists comments_parent_idx on public.comments (parent_id);
+
+-- Hashtags are read from the text; members can't pin, hide or change a poll; answers and replies must belong to the post
+create or replace function public.protect_community_fields() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if tg_table_name = 'posts' then
+    new.hashtags := coalesce((select array_agg(distinct t) from (
+      select lower(m[2]) t from regexp_matches(coalesce(new.title, '') || ' ' || new.body, '(^|[^A-Za-z0-9_&/])#([A-Za-z][A-Za-z0-9_]{1,39})', 'g') m limit 20) s), '{}');
+    if new.accepted_comment_id is not null and (tg_op = 'INSERT' or new.accepted_comment_id is distinct from old.accepted_comment_id)
+       and not exists (select 1 from public.comments c where c.id = new.accepted_comment_id and c.post_id = new.id) then
+      raise exception 'That answer belongs to another post';
+    end if;
+  elsif tg_op = 'INSERT' and new.parent_id is not null
+       and not exists (select 1 from public.comments c where c.id = new.parent_id and c.post_id = new.post_id) then
+    raise exception 'That reply belongs to another post';
+  end if;
+  if public.is_founder() then return new; end if;
+  if tg_op = 'INSERT' then
+    new.hidden := false;
+    if tg_table_name = 'posts' then new.hidden_reason := null; new.edited_at := null; new.pinned := false; new.accepted_comment_id := null; end if;
+    return new;
+  end if;
+  new.hidden := old.hidden;
+  new.author_id := old.author_id;
+  new.created_at := old.created_at;
+  if tg_table_name = 'posts' then
+    new.hidden_reason := old.hidden_reason; new.pinned := old.pinned; new.quote_of := old.quote_of; new.poll := old.poll;
+    if new.body is distinct from old.body or new.title is distinct from old.title then new.edited_at := now(); else new.edited_at := old.edited_at; end if;
+  else
+    new.post_id := old.post_id; new.parent_id := old.parent_id;
+  end if;
+  return new;
+end $$;
+
+create table if not exists public.comment_votes (
+  comment_id uuid not null references public.comments(id) on delete cascade,
+  user_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  value      smallint not null check (value in (-1, 1)),
+  created_at timestamptz not null default now(),
+  primary key (comment_id, user_id)
+);
+create table if not exists public.follows (
+  follower_id uuid not null default auth.uid() references public.profiles(id) on delete cascade,
+  followee_id uuid not null references public.profiles(id) on delete cascade,
+  created_at  timestamptz not null default now(),
+  primary key (follower_id, followee_id),
+  check (follower_id <> followee_id)
+);
+create index if not exists follows_followee_idx on public.follows (followee_id);
+create table if not exists public.bookmarks (
+  user_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  post_id    uuid not null references public.posts(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, post_id)
+);
+create table if not exists public.poll_votes (
+  post_id    uuid not null references public.posts(id) on delete cascade,
+  user_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  option     smallint not null check (option between 0 and 3),
+  created_at timestamptz not null default now(),
+  primary key (post_id, user_id)
+);
+create table if not exists public.stories (
+  id         uuid primary key default gen_random_uuid(),
+  author_id  uuid not null default auth.uid() references public.profiles(id) on delete cascade,
+  image_path text not null,
+  caption    text check (char_length(caption) <= 200),
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default now() + interval '24 hours'
+);
+create index if not exists stories_live_idx on public.stories (expires_at desc);
+create table if not exists public.notifications (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  actor_id   uuid references public.profiles(id) on delete cascade,
+  kind       text not null check (kind in ('like','comment','reply','follow','mention','quote','accepted')),
+  post_id    uuid references public.posts(id) on delete cascade,
+  comment_id uuid references public.comments(id) on delete cascade,
+  read       boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists notifications_user_idx on public.notifications (user_id, created_at desc);
+
+-- Stories always last 24 hours from when they're shared
+create or replace function public.stories_fix_times() returns trigger language plpgsql as $$
+begin new.created_at := now(); new.expires_at := now() + interval '24 hours'; return new; end $$;
+drop trigger if exists stories_times on public.stories;
+create trigger stories_times before insert on public.stories for each row execute function public.stories_fix_times();
+
+alter table public.comment_votes enable row level security;
+alter table public.follows       enable row level security;
+alter table public.bookmarks     enable row level security;
+alter table public.poll_votes    enable row level security;
+alter table public.stories       enable row level security;
+alter table public.notifications enable row level security;
+
+drop policy if exists cvotes_read on public.comment_votes;
+drop policy if exists cvotes_own  on public.comment_votes;
+create policy cvotes_read on public.comment_votes for select to authenticated using (auth.uid() is not null);
+create policy cvotes_own  on public.comment_votes for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists follows_read   on public.follows;
+drop policy if exists follows_insert on public.follows;
+drop policy if exists follows_delete on public.follows;
+create policy follows_read   on public.follows for select to authenticated using (auth.uid() is not null);
+create policy follows_insert on public.follows for insert to authenticated with check (follower_id = auth.uid());
+create policy follows_delete on public.follows for delete to authenticated using (follower_id = auth.uid());
+
+drop policy if exists bookmarks_own on public.bookmarks;
+create policy bookmarks_own on public.bookmarks for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- Poll votes are secret: you see only your own; totals come from post_poll_results(). One vote per poll, no changes.
+drop policy if exists pvotes_read   on public.poll_votes;
+drop policy if exists pvotes_insert on public.poll_votes;
+create policy pvotes_read   on public.poll_votes for select to authenticated using (user_id = auth.uid());
+create policy pvotes_insert on public.poll_votes for insert to authenticated with check (user_id = auth.uid()
+  and exists (select 1 from public.posts p where p.id = post_id and p.poll is not null and not p.hidden
+    and option < jsonb_array_length(p.poll->'options')
+    and (p.poll->>'ends_at' is null or (p.poll->>'ends_at')::timestamptz > now())));
+
+drop policy if exists stories_read   on public.stories;
+drop policy if exists stories_insert on public.stories;
+drop policy if exists stories_delete on public.stories;
+create policy stories_read   on public.stories for select to authenticated using (expires_at > now() or author_id = auth.uid() or public.is_founder());
+create policy stories_insert on public.stories for insert to authenticated with check (author_id = auth.uid());
+create policy stories_delete on public.stories for delete to authenticated using (author_id = auth.uid() or public.is_founder());
+
+-- Notifications are written only by the triggers below; you read and clear your own
+drop policy if exists notif_read   on public.notifications;
+drop policy if exists notif_update on public.notifications;
+drop policy if exists notif_delete on public.notifications;
+create policy notif_read   on public.notifications for select to authenticated using (user_id = auth.uid());
+create policy notif_update on public.notifications for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy notif_delete on public.notifications for delete to authenticated using (user_id = auth.uid());
+
+-- Poll totals for a page of posts: { "<post id>": {counts: [..], total, mine} }
+create or replace function public.post_poll_results(p_posts uuid[]) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select coalesce(jsonb_object_agg(x.id, jsonb_build_object('counts', x.counts, 'total', x.total, 'mine', x.mine)), '{}'::jsonb)
+  from (
+    select p.id,
+      (select coalesce(jsonb_agg((select count(*) from public.poll_votes v where v.post_id = p.id and v.option = i) order by i), '[]'::jsonb)
+         from generate_series(0, jsonb_array_length(p.poll->'options') - 1) i) counts,
+      (select count(*) from public.poll_votes v where v.post_id = p.id) total,
+      (select v.option from public.poll_votes v where v.post_id = p.id and v.user_id = auth.uid()) mine
+    from public.posts p
+    where p.id = any(p_posts) and p.poll is not null and auth.uid() is not null
+      and (not p.hidden or p.author_id = auth.uid() or public.is_founder())
+  ) x
+$$;
+grant execute on function public.post_poll_results(uuid[]) to authenticated;
+
+-- Trending hashtags (only posts the caller can see count)
+create or replace function public.community_trending(p_days int default 7) returns table (tag text, n bigint)
+language sql stable set search_path = public as $$
+  select t, count(*) from public.posts, unnest(hashtags) t
+  where created_at > now() - make_interval(days => p_days)
+  group by t order by 2 desc, 1 limit 10
+$$;
+grant execute on function public.community_trending(int) to authenticated;
+
+-- Notifications
+create or replace function public.community_notify(p_user uuid, p_actor uuid, p_kind text, p_post uuid, p_comment uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if p_user is null or p_user = p_actor then return; end if;
+  if p_kind in ('like', 'follow') then   -- like, unlike, like again: one notification
+    delete from public.notifications where user_id = p_user and actor_id = p_actor and kind = p_kind and post_id is not distinct from p_post;
+  end if;
+  insert into public.notifications (user_id, actor_id, kind, post_id, comment_id) values (p_user, p_actor, p_kind, p_post, p_comment);
+end $$;
+create or replace function public.community_mentions(p_text text, p_actor uuid, p_post uuid, p_comment uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare r record;
+begin
+  for r in select distinct pr.id from (
+      select rtrim(lower(m[2]), '.') u from regexp_matches(coalesce(p_text, ''), '(^|[^A-Za-z0-9_.])@([A-Za-z0-9._]{3,30})', 'g') m limit 10) s
+    join public.profiles pr on pr.username = s.u loop
+    perform public.community_notify(r.id, p_actor, 'mention', p_post, p_comment);
+  end loop;
+end $$;
+revoke execute on function public.community_notify(uuid, uuid, text, uuid, uuid) from public, anon, authenticated;
+revoke execute on function public.community_mentions(text, uuid, uuid, uuid) from public, anon, authenticated;
+
+create or replace function public.community_on_like() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  perform public.community_notify((select author_id from public.posts where id = new.post_id), new.user_id, 'like', new.post_id, null);
+  return null;
+end $$;
+create or replace function public.community_on_comment() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare post_author uuid; parent_author uuid;
+begin
+  select author_id into post_author from public.posts where id = new.post_id;
+  if new.parent_id is not null then
+    select author_id into parent_author from public.comments where id = new.parent_id;
+    perform public.community_notify(parent_author, new.author_id, 'reply', new.post_id, new.id);
+  end if;
+  if post_author is distinct from parent_author then
+    perform public.community_notify(post_author, new.author_id, 'comment', new.post_id, new.id);
+  end if;
+  perform public.community_mentions(new.body, new.author_id, new.post_id, new.id);
+  return null;
+end $$;
+create or replace function public.community_on_post() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if tg_op = 'INSERT' then
+    if new.quote_of is not null then
+      perform public.community_notify((select author_id from public.posts where id = new.quote_of), new.author_id, 'quote', new.id, null);
+    end if;
+    perform public.community_mentions(coalesce(new.title, '') || ' ' || new.body, new.author_id, new.id, null);
+  elsif new.accepted_comment_id is not null and new.accepted_comment_id is distinct from old.accepted_comment_id then
+    perform public.community_notify((select author_id from public.comments where id = new.accepted_comment_id), new.author_id, 'accepted', new.id, new.accepted_comment_id);
+  end if;
+  return null;
+end $$;
+create or replace function public.community_on_follow() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  perform public.community_notify(new.followee_id, new.follower_id, 'follow', null, null);
+  return null;
+end $$;
+revoke execute on function public.community_on_like() from public, anon, authenticated;
+revoke execute on function public.community_on_comment() from public, anon, authenticated;
+revoke execute on function public.community_on_post() from public, anon, authenticated;
+revoke execute on function public.community_on_follow() from public, anon, authenticated;
+
+drop trigger if exists post_likes_notify on public.post_likes;
+create trigger post_likes_notify after insert on public.post_likes for each row execute function public.community_on_like();
+drop trigger if exists comments_notify on public.comments;
+create trigger comments_notify after insert on public.comments for each row execute function public.community_on_comment();
+drop trigger if exists posts_notify on public.posts;
+create trigger posts_notify after insert or update of accepted_comment_id on public.posts for each row execute function public.community_on_post();
+drop trigger if exists follows_notify on public.follows;
+create trigger follows_notify after insert on public.follows for each row execute function public.community_on_follow();
