@@ -11,7 +11,7 @@ window.ROAR_DEMO_SEED = (function () {
     ['arsheya', 'Dr. Arsheya Gupta', 'Additional Secretary – Research Society', false],
     ['honey', 'Dr. Honey Sharma', 'Additional Secretary – Grievances & Legalities', false],
     ['abhishek', 'Dr. Abhishek Bhadri', 'Additional Secretary – Treasurer & Memberships', false],
-  ].map(([k, name, cabinet_role, is_admin], i) => ({ email: k + '@demo.roar', username: name.replace(/^Dr\.\s*/, '').toLowerCase().replace(/\s+/g, '.'), founder_id: 'FC-0' + (i + 1), name, cabinet_role, is_admin, sort: i + 1 }));
+  ].map(([k, name, cabinet_role, is_admin], i) => ({ email: k + '@demo.roar', username: name.replace(/^Dr\.\s*/, '').toLowerCase().replace(/\s+/g, '.'), founder_id: 'FC-0' + (i + 1), name, cabinet_role, is_admin, sort: i + 1, password_set: false, can_reset_passwords: cabinet_role === 'Chairman' }));
 
   let n = 0;
   const id = () => 'demo-' + (++n);

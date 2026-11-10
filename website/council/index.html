@@ -23,21 +23,34 @@
     <h1>Founders' Council</h1>
     <p class="muted">Management console for the nine founders of ROAR.</p>
 
-    <div id="demo-login" hidden>
-      <div class="notice">Demo mode: no database is connected yet, so everything you do stays in this browser. See <code>SETUP.md</code> to go live.</div>
-      <label for="demo-founder">Sign in as</label>
-      <select id="demo-founder"></select>
-      <button class="btn btn-primary wide" id="demo-enter">Enter demo console</button>
-    </div>
+    <form id="login-form" hidden novalidate>
+      <div class="notice" id="demo-note" hidden>Demo mode: nothing leaves this browser. Try a founder username such as <code>aman.gupta</code> (the Chairman) or <code>FC-03</code>. The first time, you choose a password.</div>
 
-    <form id="login-form" hidden>
-      <label for="login-email">Username or Founder ID</label>
-      <input id="login-email" autocomplete="username" autocapitalize="none" spellcheck="false" required placeholder="e.g. aakash.bellige or FC-01">
-      <label for="login-password">Password</label>
-      <input id="login-password" type="password" autocomplete="current-password">
-      <button class="btn btn-primary wide" type="submit">Sign in</button>
-      <p class="muted" style="font-size:.85rem;margin:12px 0 0">Forgot your password? Ask an admin founder (President, Chairman or General Secretary) to reset it. Members sign in at the <a href="../portal/">member portal</a> instead.</p>
+      <div id="lf-user">
+        <label for="login-email">Username or Founder ID</label>
+        <input id="login-email" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. aakash.bellige or FC-01">
+        <button class="btn btn-primary wide" type="submit">Continue</button>
+      </div>
+
+      <div id="lf-pass" hidden>
+        <p class="lf-who">Signing in as <b class="lf-name"></b></p>
+        <label for="login-password">Your password</label>
+        <input id="login-password" type="password" autocomplete="current-password">
+        <button class="btn btn-primary wide" type="submit">Sign in</button>
+      </div>
+
+      <div id="lf-new" hidden>
+        <p class="lf-who">Welcome, <b class="lf-name"></b>. This is your first sign-in, so choose your own password. From now on you will sign in with it.</p>
+        <label for="lf-new1">Choose a password (at least 10 characters)</label>
+        <input id="lf-new1" type="password" autocomplete="new-password">
+        <label for="lf-new2">Type it again</label>
+        <input id="lf-new2" type="password" autocomplete="new-password">
+        <button class="btn btn-primary wide" type="submit">Save my password and sign in</button>
+      </div>
+
       <p class="form-msg" id="login-msg" role="status"></p>
+      <p style="margin:8px 0 0;font-size:.88rem"><button type="button" class="linklike" id="lf-back" hidden>Use a different username</button></p>
+      <p class="muted" style="font-size:.85rem;margin:12px 0 0">Forgot your password? Ask the Chairman to reset it. Members sign in at the <a href="../portal/">member portal</a> instead.</p>
     </form>
 
     <form id="password-form" hidden>

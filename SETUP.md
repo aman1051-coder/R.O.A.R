@@ -41,11 +41,11 @@ Go to **Authentication → URL Configuration**:
 
 ## 5. Create the nine founder logins
 
-Founders sign in to the console with a **username** (or their Founder ID) and a password. No real email address is needed. Only these nine accounts can open the console.
+Founders sign in to the console with a **username** (or their Founder ID). The first time, they choose their own password; after that, they always sign in with it. Only these nine accounts can open the console.
 
 For each founder, go to **Authentication → Users → Add user → Create new user**:
-- **Email:** their username followed by `@founders.roar.invalid`, for example `aakash.bellige@founders.roar.invalid`. The `.invalid` domain is reserved and can never receive mail, so nothing is ever sent there.
-- **Password:** a temporary password. Give it to the founder in person or by phone.
+- **Email:** their username followed by `@founders.roar.invalid`, for example `aakash.bellige@founders.roar.invalid`. The `.invalid` domain is reserved and can never receive mail.
+- **Password:** type any long random text. Nobody needs to know it, because the founder replaces it at their first sign-in.
 - Tick **Auto Confirm User**.
 
 | Founder ID | Founder | Username |
@@ -60,13 +60,19 @@ For each founder, go to **Authentication → Users → Add user → Create new u
 | FC-08 | Dr. Honey Sharma | `honey.sharma` |
 | FC-09 | Dr. Abhishek Bhadri | `abhishek.bhadri` |
 
-Each founder then signs in at `/council/` with their username (or Founder ID, such as `FC-01`) and the temporary password. They should change it straight away with **Change my password** in the sidebar.
+**First sign-in:** each founder opens `/council/`, enters their username, chooses a password of at least 10 characters, and is signed in. From then on that username asks for their password.
 
-**Forgotten passwords:** there's no email reset for founder accounts. An admin founder resets it in **Authentication → Users**: open the user, choose **Reset password** or set a new one, and pass it on by phone.
+> **Do this soon.** By the founders' decision, the first sign-in has no other check. Until a founder has chosen their password, anyone who knows the username could choose it first. Ask all nine to sign in as soon as the database is live, and check the **Password** column on the console's **Founders** page shows "chosen" for everyone.
+
+**Forgotten or compromised passwords:** only the **Chairman** can help. On the console's **Founders** page, open the founder and choose either:
+- **Reset**, so the old password stops working and the founder chooses a new one at their next sign-in; or
+- **Set a new password**, then pass it on by phone.
+
+To give this power to someone else later, change `can_reset_passwords` for that founder in Supabase (**Table Editor → founders**).
 
 > If Supabase refuses the `.invalid` address, use any address ROAR controls instead (for example `founders+aakash@roarindia.org`). Then set `founderLoginDomain` in `website/js/config.js` and the `email` values in the FOUNDERS block to match.
 
-**Everyone else** (residents, members, mentors) creates their own account in the member portal at `/portal/`. Those accounts can use the members' area (Education, Careers help, and their membership) but can never open the console.
+**Everyone else** (residents, members, mentors) creates their own account in the member portal at `/portal/`. Those accounts can use the members' area (Education, Careers, Welfare and their membership) but can never open the console.
 
 ## 6. Connect the website
 
@@ -125,4 +131,4 @@ To change who is an admin, edit the founder in the console's **Founders** page.
 
 This covers, for example, a past President filling a vacancy under Article 15A.
 1. An admin adds them on the console's **Founders** page, with a Founder ID and username.
-2. Create their login in Supabase as in step 5 (`<username>@founders.roar.invalid`, Auto Confirm User).
+2. Create their login in Supabase as in step 5 (`<username>@founders.roar.invalid`, any random password, Auto Confirm User). They choose their own password at their first sign-in.

@@ -48,7 +48,7 @@
       if (!this.s) { this.s = JSON.parse(JSON.stringify(window.ROAR_DEMO_SEED)); this.save(); }
       // Older demo data: fill in founder usernames/IDs and any tables added since
       const seed = window.ROAR_DEMO_SEED;
-      (this.s.founders || []).forEach(f => { const sf = seed.founders.find(x => x.email === f.email); if (sf) { f.username = f.username || sf.username; f.founder_id = f.founder_id || sf.founder_id; } });
+      (this.s.founders || []).forEach(f => { const sf = seed.founders.find(x => x.email === f.email); if (sf) { f.username = f.username || sf.username; f.founder_id = f.founder_id || sf.founder_id; if (f.can_reset_passwords === undefined) f.can_reset_passwords = sf.can_reset_passwords; if (!f.pw_hash) f.password_set = false; } });
       Object.keys(seed).forEach(k => { if (!this.s[k]) this.s[k] = JSON.parse(JSON.stringify(seed[k])); });
     },
     save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.s)); } catch (e) { /* private mode: keep in memory */ } },
@@ -185,7 +185,7 @@
   // =====================================================================
   // Sign-in
   // =====================================================================
-  const screens = ['#demo-login', '#login-form', '#password-form', '#not-founder', '#not-connected'];
+  const screens = ['#login-form', '#password-form', '#not-founder', '#not-connected'];
   function showLogin(which) {
     $('#app').hidden = true;
     $('#login-screen').hidden = false;
@@ -198,19 +198,19 @@
     if (!LIVE) {
       Demo.load();
       founders = Demo.s.founders;
-      const sel = $('#demo-founder');
-      sel.innerHTML = founders.map(f => `<option value="${esc(f.email)}">${esc(f.founder_id || '')} · ${esc(f.name)} (${esc(f.username || f.email)})</option>`).join('');
       let last = null;
       try { last = localStorage.getItem('roar-council-demo-user'); } catch (e) { }
-      if (last && founders.some(f => f.email === last)) { me = founders.find(f => f.email === last); return startApp(); }
-      return showLogin('#demo-login');
+      if (last && founders.some(f => f.email === last && f.password_set)) { me = founders.find(f => f.email === last); return startApp(); }
+      $('#demo-note').hidden = false;
+      lfShow('user');
+      return showLogin('#login-form');
     }
     if (!sb) { showLogin('#login-form'); msg($('#login-msg'), 'Could not load the sign-in library. Check your connection and reload.', 'err'); return; }
 
     const needsPassword = /type=(invite|recovery)/.test(initialHash);
     sb.auth.onAuthStateChange(evt => { if (evt === 'PASSWORD_RECOVERY') showLogin('#password-form'); });
     const { data } = await sb.auth.getSession();
-    if (!data.session) return showLogin('#login-form');
+    if (!data.session) { lfShow('user'); return showLogin('#login-form'); }
     await afterSignIn(needsPassword);
   }
 
@@ -226,25 +226,6 @@
     startApp();
   }
 
-  $('#demo-enter').addEventListener('click', () => {
-    me = founders.find(f => f.email === $('#demo-founder').value);
-    try { localStorage.setItem('roar-council-demo-user', me.email); } catch (e) { }
-    startApp();
-  });
-
-  $('#login-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const id = $('#login-email').value.trim().toLowerCase();
-    const password = $('#login-password').value;
-    if (!password) return msg($('#login-msg'), 'Enter your password.', 'err');
-    const email = loginEmail(id);
-    msg($('#login-msg'), 'Signing in…');
-    const { error } = await sb.auth.signInWithPassword({ email, password });
-    if (error) return msg($('#login-msg'), error.message, 'err');
-    msg($('#login-msg'), '');
-    afterSignIn(false);
-  });
-
   // Founders sign in with a username (or their Founder ID, FC-01 … FC-09); an email address also works.
   const FOUNDER_USERNAMES = ['aakash.bellige', 'aman.gupta', 'kratika.bhatia', 'shriya.dhingra', 'deepika.sharma', 'arshida.pulimala', 'arsheya.gupta', 'honey.sharma', 'abhishek.bhadri'];
   function loginEmail(id) {
@@ -254,6 +235,106 @@
     return `${username}@${cfg.founderLoginDomain || 'founders.roar.invalid'}`;
   }
 
+
+  // ---------------- Founder sign-in ----------------
+  // 1. Username (or Founder ID). 2a. Their own password, or 2b. on a first sign-in (or after the Chairman
+  // resets them), they choose a password. The database (schema PART 8) enforces the same rules.
+  const toUsername = id => { const m = id.match(/^fc-?0?([1-9])$/); return m ? FOUNDER_USERNAMES[+m[1] - 1] : id; };
+  const sha = async (txt) => {   // demo only: never store demo passwords as plain text
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
+    return [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
+  };
+  const Auth = {
+    async status(username) {
+      if (!LIVE) { const f = founders.find(x => x.username === username); return !f ? 'unknown' : f.password_set ? 'password' : 'choose_password'; }
+      const { data, error } = await sb.rpc('founder_login_status', { p_username: username });
+      if (error) throw error;
+      return data;
+    },
+    async firstLogin(username, pw) {
+      if (!LIVE) {
+        const f = founders.find(x => x.username === username);
+        if (!f || f.password_set) throw new Error('This account already has a password. Sign in with it, or ask the Chairman to reset it.');
+        f.pw_hash = await sha(f.email + ':' + pw); f.password_set = true; Demo.save(); return;
+      }
+      const { error } = await sb.rpc('founder_first_login', { p_username: username, p_password: pw });
+      if (error) throw error;
+    },
+    async signIn(username, pw) {
+      if (!LIVE) {
+        const f = founders.find(x => x.username === username);
+        if (!f || !f.password_set || f.pw_hash !== await sha(f.email + ':' + pw)) throw new Error('That password is not right. Try again, or ask the Chairman to reset it.');
+        me = f; try { localStorage.setItem('roar-council-demo-user', f.email); } catch (e) { }
+        return;
+      }
+      const { error } = await sb.auth.signInWithPassword({ email: loginEmail(username), password: pw });
+      if (error) throw new Error(/invalid/i.test(error.message) ? 'That password is not right. Try again, or ask the Chairman to reset it.' : error.message);
+    },
+    async reset(username) {
+      if (!LIVE) { const f = founders.find(x => x.username === username); f.password_set = false; delete f.pw_hash; Demo.save(); return; }
+      const { error } = await sb.rpc('founder_reset_password', { p_username: username });
+      if (error) throw error;
+    },
+    async setFor(username, pw) {
+      if (!LIVE) { const f = founders.find(x => x.username === username); f.pw_hash = await sha(f.email + ':' + pw); f.password_set = true; Demo.save(); return; }
+      const { error } = await sb.rpc('founder_set_password', { p_username: username, p_password: pw });
+      if (error) throw error;
+    },
+    async changeOwn(pw) {
+      if (!LIVE) { me.pw_hash = await sha(me.email + ':' + pw); me.password_set = true; Demo.save(); return; }
+      const { error } = await sb.auth.updateUser({ password: pw });
+      if (error) throw error;
+    },
+  };
+
+  let lfStep = 'user', lfUsername = null;
+  function lfShow(step) {
+    lfStep = step;
+    ['user', 'pass', 'new'].forEach(k => { $('#lf-' + k).hidden = k !== step; });
+    $('#lf-back').hidden = step === 'user';
+    document.querySelectorAll('.lf-name').forEach(el => { el.textContent = lfUsername || ''; });
+    const focus = { user: '#login-email', pass: '#login-password', new: '#lf-new1' }[step];
+    setTimeout(() => { const el = $(focus); if (el) el.focus(); }, 30);
+  }
+  $('#lf-back').addEventListener('click', () => { lfUsername = null; ['#login-password', '#lf-new1', '#lf-new2'].forEach(s => { $(s).value = ''; }); msg($('#login-msg'), ''); lfShow('user'); });
+
+  $('#login-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const m = $('#login-msg');
+    const btn = e.submitter; if (btn) btn.disabled = true;
+    try {
+      if (lfStep === 'user') {
+        const id = $('#login-email').value.trim().toLowerCase();
+        if (!id) return msg(m, 'Enter your username.', 'err');
+        lfUsername = id.includes('@') ? id : toUsername(id);
+        if (id.includes('@')) { msg(m, ''); return lfShow('pass'); }
+        msg(m, 'Checking…');
+        const st = await Auth.status(lfUsername);
+        if (st === 'unknown') { lfUsername = null; return msg(m, 'That username is not on the Founders\u2019 Council list.', 'err'); }
+        msg(m, '');
+        return lfShow(st === 'password' ? 'pass' : 'new');
+      }
+      if (lfStep === 'pass') {
+        const pw = $('#login-password').value;
+        if (!pw) return msg(m, 'Enter your password.', 'err');
+        msg(m, 'Signing in…');
+        await Auth.signIn(lfUsername, pw);
+      } else {
+        const p1 = $('#lf-new1').value, p2 = $('#lf-new2').value;
+        if (p1.length < 10) return msg(m, 'Use at least 10 characters.', 'err');
+        if (p1 !== p2) return msg(m, 'The two passwords do not match.', 'err');
+        msg(m, 'Saving your password…');
+        await Auth.firstLogin(lfUsername, p1);
+        await Auth.signIn(lfUsername, p1);
+        toast('Password saved. Use it every time you sign in.');
+      }
+      msg(m, '');
+      ['#login-password', '#lf-new1', '#lf-new2'].forEach(s => { $(s).value = ''; });
+      if (LIVE) afterSignIn(false); else startApp();
+    } catch (err) { msg(m, err.message || 'Something went wrong.', 'err'); }
+    finally { if (btn) btn.disabled = false; }
+  });
+
   $('#change-pass').addEventListener('click', () => openEditor({
     title: 'Change my password',
     fields: [{ key: 'pw', label: 'New password (at least 10 characters)', type: 'password', required: true, full: true },
@@ -261,9 +342,7 @@
     onSave: async v => {
       if ((v.pw || '').length < 10) throw new Error('Use at least 10 characters.');
       if (v.pw !== v.pw2) throw new Error('The two passwords do not match.');
-      if (!LIVE) return;   // demo: nothing to change
-      const { error } = await sb.auth.updateUser({ password: v.pw });
-      if (error) throw error;
+      await Auth.changeOwn(v.pw);
     },
   }));
 
@@ -281,7 +360,7 @@
   async function signOut() {
     if (LIVE) await sb.auth.signOut();
     else { try { localStorage.removeItem('roar-council-demo-user'); } catch (e) { } }
-    me = null;
+    me = null; lfUsername = null; lfShow('user');
     location.hash = '';
     init();
   }
@@ -1228,8 +1307,13 @@
       await crudView({
         table: 'founders', key: 'email', order: ['sort'], eyebrow: 'Article 15A', title: "Founders' Council",
         intro: me.is_admin ? 'Only these accounts can open the console. Every other registered user, including members, can use only the member portal. A new founder also needs a matching login created in Supabase (SETUP.md, step 5).' : 'Only these accounts can open the console. Ask an admin founder to make changes.',
-        canEdit: () => me.is_admin,
-        columns: [{ key: 'founder_id', label: 'Founder ID' }, { key: 'name', label: 'Name' }, { key: 'username', label: 'Username' }, { key: 'cabinet_role', label: 'Cabinet role' }, { key: 'is_admin', label: 'Admin', fmt: v => v ? '✓' : '' }],
+        canEdit: () => me.is_admin || me.can_reset_passwords,
+        columns: [{ key: 'founder_id', label: 'Founder ID' }, { key: 'name', label: 'Name' }, { key: 'username', label: 'Username' }, { key: 'cabinet_role', label: 'Cabinet role' },
+          { key: 'password_set', label: 'Password', fmt: v => v ? '<span class="pill done">chosen</span>' : '<span class="pill todo">not yet chosen</span>' },
+          { key: 'is_admin', label: 'Admin', fmt: v => v ? '✓' : '' }],
+        info: r => me.can_reset_passwords && r.username && r.username !== me.username ? `<dl class="info-kv"><dt>Password</dt><dd>${r.password_set ? 'Chosen by the founder' : 'Not chosen yet: they choose one at their next sign-in'}<br>
+          <button type="button" class="btn btn-glass small" data-pw-action="reset" data-user="${esc(r.username)}" style="margin-top:8px">Reset: they choose a new one</button>
+          <button type="button" class="btn btn-glass small" data-pw-action="set" data-user="${esc(r.username)}" style="margin-top:8px">Set a new password</button></dd></dl>` : '',
         fields: [{ key: 'name', label: 'Name', required: true }, { key: 'founder_id', label: 'Founder ID', hint: 'FC-01 … FC-09' },
           { key: 'username', label: 'Username (lower case, e.g. aakash.bellige)', required: true },
           { key: 'cabinet_role', label: 'Cabinet role', full: true }, { key: 'sort', label: 'Order', type: 'number' },
@@ -1275,6 +1359,30 @@
       location.hash = '#/ambassadors';
     } catch (e) { fail(e); }
   }
+
+
+  // Chairman's password controls (buttons inside the Founders editor)
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-pw-action]');
+    if (!b || !me || !me.can_reset_passwords) return;
+    const u = b.dataset.user;
+    if (b.dataset.pwAction === 'reset') {
+      if (!confirm(`Reset ${u}? Their current password stops working, and they choose a new one at their next sign-in.`)) return;
+      try { await Auth.reset(u); dlg.close(); toast(`${u} will choose a new password at their next sign-in`); route(); } catch (err) { fail(err); }
+    } else {
+      dlg.close();
+      openEditor({
+        title: `Set a new password for ${u}`,
+        fields: [{ key: 'pw', label: 'New password (at least 10 characters)', type: 'password', required: true, full: true },
+          { key: 'pw2', label: 'Type it again', type: 'password', required: true, full: true }],
+        onSave: async v => {
+          if ((v.pw || '').length < 10) throw new Error('Use at least 10 characters.');
+          if (v.pw !== v.pw2) throw new Error('The two passwords do not match.');
+          await Auth.setFor(u, v.pw);
+        },
+      });
+    }
+  });
 
   init().catch(fail);
 })();

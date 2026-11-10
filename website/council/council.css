@@ -253,3 +253,6 @@ table.data.mx td.strong { text-align: left; white-space: normal; }
 table.data.mx tbody tr { cursor: default; }
 .text-answers { margin: 10px 0 0; padding-left: 18px; font-size: .9rem; display: grid; gap: 6px; }
 @media (max-width: 820px) { .res-bar { grid-template-columns: 1fr 70px; } .rb-label { grid-column: 1 / -1; } }
+
+.lf-who { margin: 18px 0 4px; font-size: .95rem; }
+.lf-who b { color: var(--text); }

@@ -752,3 +752,73 @@ create policy resources_public on public.resources for select to authenticated
 drop policy if exists opportunities_public on public.opportunities;
 create policy opportunities_public on public.opportunities for select to authenticated
   using (published and auth.uid() is not null);
+
+-- =====================================================================
+-- PART 8: founders choose their own password at first sign-in;
+-- only the Chairman can reset or change a founder's password
+-- If you already ran an earlier version of this file, run only from here to the end.
+-- =====================================================================
+alter table public.founders add column if not exists password_set boolean not null default false;
+alter table public.founders add column if not exists can_reset_passwords boolean not null default false;
+update public.founders set can_reset_passwords = true where cabinet_role = 'Chairman';
+
+-- These two columns change only through the functions below, never by editing the founders list
+revoke insert, update on public.founders from authenticated;
+grant  insert (email, username, founder_id, name, cabinet_role, is_admin, sort) on public.founders to authenticated;
+grant  update (email, username, founder_id, name, cabinet_role, is_admin, sort) on public.founders to authenticated;
+
+-- Before sign-in: does this username exist, and has its founder chosen a password yet?
+create or replace function public.founder_login_status(p_username text) returns text
+language sql stable security definer set search_path = public as $$
+  select coalesce((select case when f.password_set then 'password' else 'choose_password' end
+                   from public.founders f where f.username = lower(trim(p_username))), 'unknown')
+$$;
+grant execute on function public.founder_login_status(text) to anon, authenticated;
+
+-- First sign-in: a founder who has not chosen a password yet sets one (no other check, by decision of the founders)
+create or replace function public.founder_first_login(p_username text, p_password text) returns void
+language plpgsql security definer set search_path = public, extensions as $$
+declare f public.founders;
+begin
+  if char_length(coalesce(p_password, '')) < 10 then raise exception 'Use at least 10 characters.'; end if;
+  select * into f from public.founders where username = lower(trim(p_username)) for update;
+  if f.email is null then raise exception 'That username is not on the Founders'' Council list.'; end if;
+  if f.password_set then raise exception 'This account already has a password. Sign in with it, or ask the Chairman to reset it.'; end if;
+  update auth.users set encrypted_password = crypt(p_password, gen_salt('bf')), updated_at = now() where lower(email) = f.email;
+  if not found then raise exception 'This founder''s login has not been created in Supabase yet (SETUP.md, step 5).'; end if;
+  update public.founders set password_set = true where email = f.email;
+end $$;
+grant execute on function public.founder_first_login(text, text) to anon, authenticated;
+
+create or replace function public.can_reset_passwords() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.founders where email = public.my_email() and can_reset_passwords)
+$$;
+
+-- Chairman: reset, so the founder chooses a new password at their next sign-in (the old one stops working)
+create or replace function public.founder_reset_password(p_username text) returns void
+language plpgsql security definer set search_path = public, extensions as $$
+declare f public.founders;
+begin
+  if not public.can_reset_passwords() then raise exception 'Only the Chairman can reset passwords.'; end if;
+  select * into f from public.founders where username = lower(trim(p_username)) for update;
+  if f.email is null then raise exception 'Unknown username.'; end if;
+  update auth.users set encrypted_password = crypt(gen_random_uuid()::text || clock_timestamp()::text, gen_salt('bf')), updated_at = now() where lower(email) = f.email;
+  update public.founders set password_set = false where email = f.email;
+end $$;
+grant execute on function public.founder_reset_password(text) to authenticated;
+
+-- Chairman: set a specific password for a founder
+create or replace function public.founder_set_password(p_username text, p_password text) returns void
+language plpgsql security definer set search_path = public, extensions as $$
+declare f public.founders;
+begin
+  if not public.can_reset_passwords() then raise exception 'Only the Chairman can change other founders'' passwords.'; end if;
+  if char_length(coalesce(p_password, '')) < 10 then raise exception 'Use at least 10 characters.'; end if;
+  select * into f from public.founders where username = lower(trim(p_username)) for update;
+  if f.email is null then raise exception 'Unknown username.'; end if;
+  update auth.users set encrypted_password = crypt(p_password, gen_salt('bf')), updated_at = now() where lower(email) = f.email;
+  if not found then raise exception 'This founder''s login has not been created in Supabase yet.'; end if;
+  update public.founders set password_set = true where email = f.email;
+end $$;
+grant execute on function public.founder_set_password(text, text) to authenticated;
