@@ -7,12 +7,14 @@
 // matrix (rows x cols, one choice per row), nps (0-10), text.
 // "when" decides who sees a section or question, from the answers so far.
 (function () {
+  // Display rules are plain data (see js/survey-engine.js), so they can be edited in the console
   const RESIDENT = ['pg1', 'pg2', 'pg3'];
   const POSTPG = ['sr', 'fellow', 'consultant'];
-  const isRes = a => RESIDENT.includes(a.role);
-  const isPost = a => POSTPG.includes(a.role);
-  const inScope = a => isRes(a) || isPost(a);      // residents and radiation oncologists up to 6 years after PG
-  const isSenior = a => a.role === 'senior';
+  const IN_SCOPE = { roles: [...RESIDENT, ...POSTPG] };   // residents and radiation oncologists up to 6 years after PG
+  const RES_ONLY = { roles: RESIDENT };
+  const POST_ONLY = { roles: POSTPG };
+  const POST_OR_SENIOR = { roles: [...POSTPG, 'senior'] };
+  const SENIOR_ONLY = { roles: ['senior'] };
 
   const AGREE = ['Strongly disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly agree'];
   const FREQ5 = ['Never', 'Rarely', 'Sometimes', 'Often', 'Always'];
@@ -24,7 +26,6 @@
     minutes: 15,
     intro: 'ROAR is asking every radiation oncology resident and young radiation oncologist in India about training, working conditions, wellbeing and careers. The results will be published as the first State of Young Radiation Oncologists in India report, and will shape ROAR\'s programmes and advocacy.',
     helpline: 'If any question brings up something difficult, you can call Tele-MANAS on 14416 (or 1-800-891-4416), India\'s free 24-hour mental health helpline.',
-    groups: { RESIDENT, POSTPG },
     sections: [
       {
         id: 'about', title: 'About you',
@@ -36,7 +37,7 @@
             ['consultant', 'Consultant or faculty, up to 6 years after PG'],
             ['senior', 'Radiation oncologist, more than 6 years after PG']] },
           { id: 'course', type: 'single', required: true, label: 'Your PG qualification (completed or in progress)', options: ['MD', 'DNB', 'Equivalent abroad', 'Other'] },
-          { id: 'since_pg', type: 'single', label: 'How long ago did you complete PG?', when: a => isPost(a) || isSenior(a),
+          { id: 'since_pg', type: 'single', label: 'How long ago did you complete PG?', when: POST_OR_SENIOR,
             options: ['Less than 1 year', '1–2 years', '3–4 years', '5–6 years', 'More than 6 years'] },
           { id: 'age', type: 'single', label: 'Age', options: ['Under 26', '26–30', '31–35', '36–40', 'Over 40', 'Prefer not to say'] },
           { id: 'gender', type: 'single', label: 'Gender', options: ['Woman', 'Man', 'Non-binary or another identity', 'Prefer not to say'] },
@@ -49,7 +50,7 @@
         ],
       },
       {
-        id: 'training', title: 'Training and clinical exposure', when: inScope,
+        id: 'training', title: 'Training and clinical exposure', when: IN_SCOPE,
         intro: 'If you have finished PG, answer about your PG training.',
         questions: [
           { id: 'exposure', type: 'matrix', label: 'During PG, what was your experience of each of these?',
@@ -78,7 +79,7 @@
         ],
       },
       {
-        id: 'hours', title: 'Working hours and duties', when: inScope,
+        id: 'hours', title: 'Working hours and duties', when: IN_SCOPE,
         intro: 'Think about a typical month in your current post.',
         questions: [
           { id: 'hours_week', type: 'single', required: true, label: 'On average, how many hours do you work per week, including on-call?', options: ['Under 48', '48–60', '61–72', '73–84', 'More than 84'] },
@@ -91,25 +92,25 @@
         ],
       },
       {
-        id: 'pay', title: 'Stipend, pay and contracts', when: inScope,
+        id: 'pay', title: 'Stipend, pay and contracts', when: IN_SCOPE,
         intro: 'These answers feed ROAR\'s national Stipend Index and Senior Resident Pay Benchmark. Ranges are used so no one can be identified.',
         questions: [
-          { id: 'stipend', type: 'single', when: isRes, label: 'Your monthly stipend before deductions', options: [
+          { id: 'stipend', type: 'single', when: RES_ONLY, label: 'Your monthly stipend before deductions', options: [
             'Under ₹50,000', '₹50,000–75,000', '₹75,000–1,00,000', '₹1,00,000–1,25,000', '₹1,25,000–1,50,000', 'Over ₹1,50,000', 'Prefer not to say'] },
-          { id: 'stipend_timely', type: 'single', when: isRes, label: 'In the last 12 months, your stipend was paid…', options: [
+          { id: 'stipend_timely', type: 'single', when: RES_ONLY, label: 'In the last 12 months, your stipend was paid…', options: [
             'Always on time', 'Late once or twice', 'Often late', 'Unpaid for 3 months or more'] },
-          { id: 'salary', type: 'single', when: isPost, label: 'Your monthly salary before deductions', options: [
+          { id: 'salary', type: 'single', when: POST_ONLY, label: 'Your monthly salary before deductions', options: [
             'Under ₹75,000', '₹75,000–1,00,000', '₹1,00,000–1,50,000', '₹1,50,000–2,00,000', '₹2,00,000–3,00,000', 'Over ₹3,00,000', 'Prefer not to say'] },
           { id: 'bond', type: 'single', label: 'Are you bound by a service bond?', options: ['Yes, currently', 'I completed one', 'No'] },
-          { id: 'bond_amount', type: 'single', when: a => a.bond === 'Yes, currently', label: 'Penalty for breaking the bond', options: [
+          { id: 'bond_amount', type: 'single', when: { q: 'bond', eq: 'Yes, currently' }, label: 'Penalty for breaking the bond', options: [
             'Under ₹10 lakh', '₹10–25 lakh', '₹25–50 lakh', 'Over ₹50 lakh', 'Not a money bond', 'Don\'t know'] },
           { id: 'pay_fair', type: 'scale', label: 'My pay is fair for the work I do.', scale: AGREE },
-          { id: 'contract_issues', type: 'multi', when: isPost, label: 'In your current post, have you faced any of these?', options: [
+          { id: 'contract_issues', type: 'multi', when: POST_ONLY, label: 'In your current post, have you faced any of these?', options: [
             'No written contract', 'Unclear duties', 'Long notice period', 'Non-compete clause', 'Pay cut or withheld pay', 'Pressure from targets or incentives', 'None of these'] },
         ],
       },
       {
-        id: 'environment', title: 'Work environment and dignity', when: inScope,
+        id: 'environment', title: 'Work environment and dignity', when: IN_SCOPE,
         intro: 'Every question in this section is optional. Your answers help ROAR understand patterns across India, never individual cases.',
         questions: [
           { id: 'respect', type: 'matrix', label: 'I am treated with respect by…',
@@ -119,9 +120,9 @@
               'Discrimination because of caste', 'Discrimination because of religion', 'Discrimination because of region or language',
               'Discrimination because of where you trained', 'Violence or threats from patients or relatives'],
             cols: ['Never', 'Once or twice', 'Several times', 'Often'] },
-          { id: 'reported', type: 'single', label: 'If you experienced any of these, did you report it?', when: a => a.experiences && Object.values(a.experiences).some(v => v && v !== 'Never'),
+          { id: 'reported', type: 'single', label: 'If you experienced any of these, did you report it?', when: { q: 'experiences', anyNot: 'Never' },
             options: ['Yes, and it was resolved', 'Yes, but it was not resolved', 'No'] },
-          { id: 'why_not', type: 'multi', when: a => a.reported === 'No', label: 'Why not?', options: [
+          { id: 'why_not', type: 'multi', when: { q: 'reported', eq: 'No' }, label: 'Why not?', options: [
             'Fear of consequences', 'Didn\'t know how', 'No mechanism to report', 'Thought nothing would change', 'Didn\'t think it was serious enough', 'Another reason'] },
           { id: 'mechanisms', type: 'multi', label: 'As far as you know, does your institution have…', options: [
             'An Internal Committee under the POSH Act', 'An anti-ragging committee', 'A grievance cell for residents', 'I don\'t know of any'] },
@@ -129,7 +130,7 @@
         ],
       },
       {
-        id: 'wellbeing', title: 'Wellbeing and safety', when: inScope,
+        id: 'wellbeing', title: 'Wellbeing and safety', when: IN_SCOPE,
         intro: 'These questions are optional. They use short, widely used screening items, and are not a diagnosis.',
         questions: [
           { id: 'burnout', type: 'single', label: 'Overall, based on your own definition of burnout, how would you rate your level of burnout?', options: [
@@ -149,9 +150,9 @@
         ],
       },
       {
-        id: 'research', title: 'Research and academics', when: inScope,
+        id: 'research', title: 'Research and academics', when: IN_SCOPE,
         questions: [
-          { id: 'thesis_guidance', type: 'scale', when: isRes, label: 'How good is the guidance for your thesis?', scale: ['Very poor', 'Poor', 'Fair', 'Good', 'Excellent'] },
+          { id: 'thesis_guidance', type: 'scale', when: RES_ONLY, label: 'How good is the guidance for your thesis?', scale: ['Very poor', 'Poor', 'Fair', 'Good', 'Excellent'] },
           { id: 'publications', type: 'single', label: 'Peer-reviewed publications so far', options: ['None', '1–2', '3–5', 'More than 5'] },
           { id: 'barriers', type: 'multi', label: 'What gets in the way of research for you?', options: [
             'Time', 'Guidance or mentorship', 'Statistics support', 'Funding', 'Ethics approval delays', 'Access to journals', 'Access to data', 'Nothing major'] },
@@ -160,7 +161,7 @@
         ],
       },
       {
-        id: 'career', title: 'Career and the future', when: inScope,
+        id: 'career', title: 'Career and the future', when: IN_SCOPE,
         questions: [
           { id: 'plans', type: 'single', label: 'What do you plan to do over the next 3 years?', options: [
             'Senior residency in India', 'Fellowship in India', 'Fellowship abroad', 'Consultant in a government hospital', 'Consultant in a private or corporate hospital',
@@ -169,13 +170,13 @@
           { id: 'mentor', type: 'single', label: 'Do you have a mentor?', options: ['Yes, in my department', 'Yes, outside my department', 'No, but I would like one', 'No, and I don\'t need one'] },
           { id: 'choose_again', type: 'single', label: 'Knowing what you know now, would you choose radiation oncology again?', options: ['Definitely', 'Probably', 'Not sure', 'Probably not', 'No'] },
           { id: 'considered_leaving', type: 'single', label: 'Have you seriously considered leaving the specialty?', options: ['Never', 'Once or twice', 'Often'] },
-          { id: 'leaving_why', type: 'multi', when: a => a.considered_leaving && a.considered_leaving !== 'Never', label: 'Why?', options: [
+          { id: 'leaving_why', type: 'multi', when: { q: 'considered_leaving', ne: 'Never' }, label: 'Why?', options: [
             'Training quality', 'Working conditions', 'Pay', 'Job prospects', 'Treatment at work', 'Wellbeing', 'Interest in another field', 'Another reason'] },
           { id: 'recommend', type: 'nps', label: 'How likely are you to recommend your department\'s training to a junior colleague?', low: 'Not at all likely', high: 'Extremely likely' },
         ],
       },
       {
-        id: 'senior_view', title: 'Your perspective as a senior radiation oncologist', when: isSenior,
+        id: 'senior_view', title: 'Your perspective as a senior radiation oncologist', when: SENIOR_ONLY,
         intro: 'ROAR is led by residents and young radiation oncologists, and values the experience of senior colleagues.',
         questions: [
           { id: 'senior_role', type: 'single', label: 'Your current role', options: ['Faculty in a teaching institution', 'Consultant in a non-teaching hospital', 'Head of department', 'Other'] },

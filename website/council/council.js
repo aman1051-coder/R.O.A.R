@@ -50,6 +50,15 @@
       const seed = window.ROAR_DEMO_SEED;
       (this.s.founders || []).forEach(f => { const sf = seed.founders.find(x => x.email === f.email); if (sf) { f.username = f.username || sf.username; f.founder_id = f.founder_id || sf.founder_id; if (f.can_reset_passwords === undefined) f.can_reset_passwords = sf.can_reset_passwords; if (!f.pw_hash) f.password_set = false; } });
       Object.keys(seed).forEach(k => { if (!this.s[k]) this.s[k] = JSON.parse(JSON.stringify(seed[k])); });
+      if (!this.s.surveys && window.ROAR_SURVEY) {
+        const T = JSON.parse(JSON.stringify(window.ROAR_SURVEY));
+        const now = new Date().toISOString();
+        this.s.surveys = [
+          { id: uid(), slug: T.id, kind: 'survey', title: T.title, intro: T.intro, version: T.version, definition: { minutes: T.minutes, helpline: T.helpline, sections: T.sections }, status: 'draft', audience: 'everyone', show_results: false, created_by: 'deepika@demo.roar', created_at: '2026-11-10T09:00:00+05:30', updated_at: now },
+          { id: uid(), slug: 'poll-contour-club-day', kind: 'poll', title: 'EXAMPLE: Which day suits you best for Contour Club?', intro: null, version: '1', definition: { minutes: 1, sections: [{ id: 'poll', title: 'EXAMPLE: Which day suits you best for Contour Club?', questions: [{ id: 'answer', type: 'single', label: 'EXAMPLE: Which day suits you best for Contour Club?', required: true, options: ['Saturday evening', 'Sunday morning', 'Sunday evening', 'A weekday evening'] }] }] }, status: 'open', audience: 'members', show_results: true, created_by: 'arshida@demo.roar', created_at: '2026-11-10T10:00:00+05:30', updated_at: now },
+        ];
+        this.save();
+      }
     },
     save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.s)); } catch (e) { /* private mode: keep in memory */ } },
     reset() { try { localStorage.removeItem(this.KEY); } catch (e) { } this.s = null; this.load(); },
@@ -386,7 +395,7 @@
     library: '<path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5z"/><path d="M8 7h6"/>',
     members: '<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.8-1.8 2-2.6 3.5-2.6s2.7.8 3.5 2.6M15 9h3M15 13h3"/>',
     help: '<path d="M12 21a9 9 0 1 0-9-9c0 1.7.5 3.3 1.3 4.7L3 21l4.4-1.2A9 9 0 0 0 12 21z"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.3M12 17h.01"/>',
-    survey: '<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>',
+    surveys: '<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>',
     elections: '<path d="M4 21h16M6 17V8l6-5 6 5v9"/><path d="M9.5 12l2 2 3.5-3.5"/>',
     inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/>',
     events: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2"/>',
@@ -397,7 +406,7 @@
   const VIEWS = [
     ['overview', 'Overview'], ['tracker', 'Launch tracker'], ['motions', 'Motions & votes'], ['meetings', 'Meetings & minutes'],
     ['section:Membership'],
-    ['members', 'Members'], ['help', 'Career help'], ['elections', 'Elections & ballots'], ['survey', 'National survey'], ['registrations', 'Interest list'], ['ambassadors', 'Ambassadors'],
+    ['members', 'Members'], ['help', 'Career help'], ['elections', 'Elections & ballots'], ['surveys', 'Surveys & polls'], ['registrations', 'Interest list'], ['ambassadors', 'Ambassadors'],
     ['section:Public website'],
     ['inbox', 'Inbox'], ['announcements', 'News'], ['events', 'Events'], ['opportunities', 'Opportunities'], ['resources', 'Learning resources'],
     ['section:Council'],
@@ -437,11 +446,18 @@
   }
 
   async function route() {
-    const key = (location.hash.match(/^#\/([\w-]+)/) || [])[1] || 'overview';
+    const m = location.hash.match(/^#\/([\w-]+)(?:\/(.+))?/);
+    const key = (m && m[1]) || 'overview';
+    const arg = m && m[2] ? m[2] : null;
     const view = RENDER[key] ? key : 'overview';
+    if (!LIVE) {   // demo: pick up anything saved from other tabs (survey answers, portal requests)
+      Demo.load();
+      founders = Demo.s.founders;
+      if (me) me = founders.find(f => f.email === me.email) || me;
+    }
     document.querySelectorAll('.side-nav a').forEach(a => a.classList.toggle('active', a.dataset.view === view));
     $('#view').innerHTML = '<div class="empty">Loading…</div>';
-    try { await RENDER[view](); } catch (e) { fail(e); $('#view').innerHTML = `<div class="panel glass empty">Couldn't load this section: ${esc(e.message || e)}</div>`; }
+    try { await RENDER[view](arg); } catch (e) { fail(e); $('#view').innerHTML = `<div class="panel glass empty">Couldn't load this section: ${esc(e.message || e)}</div>`; }
     updateBadges();
   }
 
@@ -1059,114 +1075,6 @@
       });
     },
 
-    // ---------------- National survey (results) ----------------
-    async survey() {
-      const S = window.ROAR_SURVEY;
-      if (!S) { $('#view').innerHTML = '<div class="panel glass empty">The questionnaire file (js/survey-def.js) did not load.</div>'; return; }
-      const [rows, open] = await Promise.all([DB.list('survey_responses', ['submitted_on', false]), DB.setting('survey_open')]);
-      const all = rows.filter(r => r.survey_id === S.id);
-      const GROUPS = { all: ['All respondents', () => true], res: ['Residents', a => S.groups.RESIDENT.includes(a.role)], post: ['Up to 6 years after PG', a => S.groups.POSTPG.includes(a.role)], senior: ['Senior ROs', a => a.role === 'senior'] };
-      const state = SURVEY_STATE;
-      const resp = all.filter(r => GROUPS[state.group][1](r.answers || {}));
-      const MIN = 5;
-
-      const sample = () => {   // demo only: realistic-looking random answers to try the results view
-        const pick = a => a[Math.floor(Math.random() * a.length)];
-        const val = o => Array.isArray(o) ? o[0] : o;
-        const roles = ['pg1', 'pg1', 'pg2', 'pg2', 'pg3', 'pg3', 'sr', 'sr', 'fellow', 'consultant', 'senior'];
-        Demo.s.survey_responses = Demo.s.survey_responses || [];
-        for (let n = 0; n < 40; n++) {
-          const a = { role: pick(roles) };
-          S.sections.forEach(sec => {
-            if (sec.when && !sec.when(a)) return;
-            sec.questions.forEach(q => {
-              if (q.id === 'role' || (q.when && !q.when(a)) || (!q.required && Math.random() < .08)) return;
-              if (q.type === 'single' || q.type === 'select') a[q.id] = val(pick(q.options));
-              else if (q.type === 'scale') a[q.id] = pick(q.scale);
-              else if (q.type === 'nps') a[q.id] = Math.floor(Math.random() * 11);
-              else if (q.type === 'multi') { const k = 1 + Math.floor(Math.random() * Math.min(q.max || 3, q.options.length)); a[q.id] = [...q.options].sort(() => Math.random() - .5).slice(0, k).map(val); }
-              else if (q.type === 'matrix') { a[q.id] = {}; q.rows.forEach(r => { a[q.id][r] = pick(q.cols); }); }
-              else if (q.type === 'text' && Math.random() < .3) a[q.id] = 'SAMPLE: ' + pick(['More hands-on brachytherapy.', 'Structured contouring teaching with feedback.', 'Fair, on-time stipends.', 'Protected study time.']);
-            });
-          });
-          Demo.s.survey_responses.push({ id: 'sample-' + Date.now() + '-' + n, survey_id: S.id, version: S.version, submitted_on: R.addMonths(R.todayIST(), -Math.floor(Math.random() * 2)), answers: a });
-        }
-        Demo.save(); toast('Added 40 sample responses'); route();
-      };
-
-      const exportCSV = () => {
-        const cols = ['submitted_on', 'version'];
-        S.sections.forEach(s => s.questions.forEach(q => { if (q.type === 'matrix') q.rows.forEach(r => cols.push(`${q.id}[${r}]`)); else cols.push(q.id); }));
-        const get = (r, c) => {
-          if (c === 'submitted_on' || c === 'version') return r[c];
-          const m = c.match(/^(.+)\[(.+)\]$/);
-          const v = m ? (r.answers[m[1]] || {})[m[2]] : r.answers[c];
-          return Array.isArray(v) ? v.join('; ') : v;
-        };
-        const cell = v => { let x = String(v ?? ''); if (/^[=+\-@]/.test(x)) x = "'" + x; return '"' + x.replace(/"/g, '""') + '"'; };
-        const csv = [cols.map(cell).join(','), ...resp.map(r => cols.map(c => cell(get(r, c))).join(','))].join('\r\n');
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }));
-        a.download = `roar-survey-${S.id}-${state.group}-${R.todayIST()}.csv`; a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      };
-
-      setHeader('Annexure C roadmap · Article 8H', 'National survey', [
-        ...(me.is_admin ? [{ label: open ? 'Close survey' : 'Open survey', onClick: async () => {
-          if (!confirm(open ? 'Close the survey to new responses?' : 'Open the survey to the public? The roadmap plans this for after registration.')) return;
-          try { await DB.setSetting('survey_open', !open); route(); } catch (e) { fail(e); }
-        } }] : []),
-        { label: 'Review questions ↗', onClick: () => window.open('../survey/?review=1', '_blank') },
-        { label: 'Preview survey ↗', onClick: () => window.open('../survey/', '_blank') },
-        ...(LIVE ? [] : [{ label: 'Add 40 sample responses', onClick: sample }]),
-        { label: 'Export CSV', primary: true, onClick: exportCSV },
-      ]);
-
-      const bar = (label, n, total) => {
-        const pct = total ? Math.round(n / total * 100) : 0;
-        return `<div class="res-bar"><span class="rb-label">${esc(label)}</span><span class="rb-track"><i style="width:${pct}%"></i></span><span class="rb-n">${n} <em>${pct}%</em></span></div>`;
-      };
-      const summary = q => {
-        const vals = resp.map(r => r.answers[q.id]).filter(v => v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && !v.length));
-        const n = vals.length;
-        if (!n) return '<p class="muted" style="margin:0">No answers yet.</p>';
-        if (q.type === 'single' || q.type === 'select' || q.type === 'scale') {
-          const options = q.scale || q.options.map(o => Array.isArray(o) ? o : [o, o]);
-          return options.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return bar(l, vals.filter(x => x === v).length, n); }).join('');
-        }
-        if (q.type === 'multi') return q.options.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return bar(l, vals.filter(x => x.includes(v)).length, n); }).join('') + '<p class="hint">Percent of people who answered; they could choose more than one.</p>';
-        if (q.type === 'nps') {
-          const pro = vals.filter(v => v >= 9).length, det = vals.filter(v => v <= 6).length;
-          return `<div class="nps-score"><b>${Math.round((pro - det) / n * 100)}</b><span>Net score (−100 to +100): ${pro} would recommend (9–10), ${det} would not (0–6)</span></div>` +
-            Array.from({ length: 11 }, (_, i) => bar(String(i), vals.filter(v => +v === i).length, n)).join('');
-        }
-        if (q.type === 'matrix') {
-          return `<div class="table-wrap"><table class="data mx"><thead><tr><th></th>${q.cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>
-            ${q.rows.map(r => { const rv = vals.map(v => v[r]).filter(Boolean); return `<tr><td class="strong">${esc(r)}</td>${q.cols.map(c => { const k = rv.filter(x => x === c).length; const p = rv.length ? Math.round(k / rv.length * 100) : 0; return `<td style="background:rgba(240,138,60,${(p / 100 * .55).toFixed(2)})">${p}%<span class="muted"> (${k})</span></td>`; }).join('')}</tr>`; }).join('')}
-          </tbody></table></div>`;
-        }
-        if (q.type === 'text') return `<details><summary class="linklike">${n} written answer${n === 1 ? '' : 's'}. Read with care, and never quote anything identifying.</summary><ul class="text-answers">${vals.slice(0, 200).map(v => `<li>${esc(v)}</li>`).join('')}</ul></details>`;
-        return '';
-      };
-
-      const counts = Object.entries(GROUPS).map(([k, [l, f]]) => [k, l, all.filter(r => f(r.answers || {})).length]);
-      $('#view').innerHTML = `
-        <div class="grid k4">
-          <div class="kpi glass"><div class="n">${all.length}</div><div class="l">Responses</div><div class="sub">Survey is ${open ? 'open' : 'closed'} · ${esc(S.version)}</div></div>
-          ${counts.slice(1).map(([, l, n]) => `<div class="kpi glass"><div class="n">${n}</div><div class="l">${esc(l)}</div><div class="sub">${all.length ? Math.round(n / all.length * 100) : 0}% of responses</div></div>`).join('')}
-        </div>
-        <div class="toolbar" style="margin-top:18px">
-          <select id="sv-group" aria-label="Show results for">${counts.map(([k, l, n]) => `<option value="${k}"${state.group === k ? ' selected' : ''}>${esc(l)} (${n})</option>`).join('')}</select>
-        </div>
-        ${resp.length && resp.length < MIN ? `<div class="notice warn">Only ${resp.length} responses in this group. Don't report or share results for groups smaller than ${MIN}: people could be identified.</div>` : ''}
-        ${!all.length ? `<div class="panel glass empty">No responses yet. ${LIVE ? 'Open the survey when ROAR is ready.' : 'In demo mode, take the survey yourself or add sample responses.'}</div>` : ''}
-        ${all.length ? S.sections.map(s => `<div class="panel glass">
-          <h2>${esc(s.title)}</h2>
-          ${s.questions.filter(q => q.id !== 'role' || state.group === 'all').map(q => `<div class="sv-q"><h3>${esc(q.label)}</h3>${summary(q)}</div>`).join('')}
-        </div>`).join('') : ''}`;
-      $('#sv-group').addEventListener('change', e => { state.group = e.target.value; route(); });
-    },
-
     // ---------------- Career help requests (Article 8O) ----------------
     async help() {
       const fnames = founders.map(f => f.name);
@@ -1383,6 +1291,16 @@
       });
     }
   });
+
+  // Hooks for the console's add-on modules (council/surveys.js)
+  window.ROAR_COUNCIL = {
+    DB, Demo, LIVE, R, esc, toast, fail, fmtDate, pill, openEditor, setHeader, route,
+    get sb() { return sb; }, get me() { return me; }, get founders() { return founders; },
+    register(name, fn) {
+      RENDER[name] = fn;
+      if (me && (location.hash.match(/^#\/([\w-]+)/) || [])[1] === name) route();
+    },
+  };
 
   init().catch(fail);
 })();

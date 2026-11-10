@@ -822,3 +822,64 @@ begin
   update public.founders set password_set = true where email = f.email;
 end $$;
 grant execute on function public.founder_set_password(text, text) to authenticated;
+
+-- =====================================================================
+-- PART 9: national surveys and polls created by the Founders' Council
+-- If you already ran an earlier version of this file, run only from here to the end.
+-- =====================================================================
+-- Only founders can create, edit, open, close or delete surveys and polls, and read responses.
+-- Each survey is for "everyone" (anyone with the link) or "members" (signed-in portal accounts only).
+create table if not exists public.surveys (
+  id           uuid primary key default gen_random_uuid(),
+  slug         text not null unique check (slug ~ '^[a-z0-9][a-z0-9-]{2,79}$'),   -- used in the link: /survey/?s=<slug>
+  kind         text not null default 'survey' check (kind in ('survey','poll')),
+  title        text not null check (char_length(title) between 3 and 300),
+  intro        text check (char_length(intro) <= 4000),
+  version      text not null default '0.1',
+  definition   jsonb not null default '{"sections":[]}'::jsonb check (jsonb_typeof(definition) = 'object' and pg_column_size(definition) < 500000),
+  status       text not null default 'draft' check (status in ('draft','open','closed')),
+  audience     text not null default 'everyone' check (audience in ('everyone','members')),
+  show_results boolean not null default false,   -- polls: show totals to people after they answer
+  created_by   text default public.my_email(),
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+alter table public.surveys enable row level security;
+drop policy if exists surveys_read     on public.surveys;
+drop policy if exists surveys_founders on public.surveys;
+-- Anyone can read a survey that is open or closed (to answer it); drafts are visible to founders only
+create policy surveys_read on public.surveys for select to anon, authenticated
+  using (status <> 'draft' or public.is_founder());
+create policy surveys_founders on public.surveys for all using (public.is_founder()) with check (public.is_founder());
+
+-- Responses: only to an open survey; members-only surveys need a signed-in account
+drop policy if exists survey_submit on public.survey_responses;
+create policy survey_submit on public.survey_responses for insert to anon, authenticated
+  with check (exists (
+    select 1 from public.surveys s
+    where s.slug = survey_id and s.status = 'open' and (s.audience = 'everyone' or auth.uid() is not null)));
+-- Founders can delete responses (for example test answers), not only admins
+drop policy if exists survey_founders_delete on public.survey_responses;
+create policy survey_founders_delete on public.survey_responses for delete using (public.is_founder());
+
+-- Poll totals for respondents, only when the founders chose to show them
+create or replace function public.poll_results(p_slug text) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare s public.surveys; q text;
+begin
+  select * into s from public.surveys where slug = p_slug;
+  if s.id is null or s.kind <> 'poll' or s.status = 'draft' or not s.show_results then return null; end if;
+  q := s.definition -> 'sections' -> 0 -> 'questions' -> 0 ->> 'id';
+  return jsonb_build_object(
+    'total', (select count(*) from public.survey_responses where survey_id = p_slug),
+    'counts', (select coalesce(jsonb_object_agg(choice, n), '{}'::jsonb) from (
+      select choice, count(*) as n from (
+        select r.answers ->> q as choice from public.survey_responses r
+          where r.survey_id = p_slug and jsonb_typeof(r.answers -> q) = 'string'
+        union all
+        select e from public.survey_responses r, jsonb_array_elements_text(r.answers -> q) e
+          where r.survey_id = p_slug and jsonb_typeof(r.answers -> q) = 'array') x
+      group by choice) t));
+end $$;
+grant execute on function public.poll_results(text) to anon, authenticated;

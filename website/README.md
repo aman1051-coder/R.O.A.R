@@ -16,7 +16,8 @@ This is the public website for ROAR (Rising Oncologists' Alliance in Radiation O
 | `main.js` | Mobile menu, glass light effects and scroll reveal. |
 | `shader.js` | The animated WebGL background. If a browser can't run it, a static gradient shows instead. |
 | `desks.html` | The support desks page (grievance cell, Education Standards Desk, dignity at work). |
-| `survey/` and `js/survey-def.js` | The national survey. The questions are all in `js/survey-def.js`; `/survey/?review=1` shows a printable copy. |
+| `survey/`, `js/survey-engine.js`, `js/survey-def.js` | Surveys and polls. Founders build them in the console (**Surveys & polls**); `js/survey-def.js` holds the built-in national survey draft. Links look like `/survey/?s=<name>`, and adding `&review=1` gives a printable copy. |
+| `council/surveys.js` | The console's Surveys & polls dashboard, builder and results. |
 | `portal/` | The member portal at `/portal/`: sign-up, application with document upload, membership card, voting window and ballots. |
 | `js/rules.js` | The membership rules (voting window, eligibility, fees) used by the portal, the console and the membership page. The database enforces the same rules. |
 | `council/` | The Founders' Council console at `/council/`. It needs Supabase for real logins; see `../SETUP.md`. |

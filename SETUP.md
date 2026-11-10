@@ -105,6 +105,35 @@ In **Elections & ballots**, create a ballot as a draft, add the choices, set whe
 - Results appear only after you set the ballot to **Closed**. Turnout is visible to founders throughout.
 - **Electoral roll CSV** in **Members** downloads everyone eligible to vote today.
 
+## Surveys and polls (Founders' Council only)
+
+National surveys and polls are created and run from the console's **Surveys & polls** page. Only the nine founders can create, edit, open, close or delete them, or read the responses. The database enforces this (schema PART 9).
+
+- **New survey:** start from a blank survey, a copy of the national survey, or a copy of any earlier survey. Then build it section by section in the builder:
+  - Each question can be one choice, several choices, a scale, a grid, a 0–10 rating, a dropdown or a written answer.
+  - Each section or question can be shown to everyone, or only to residents, young radiation oncologists or seniors.
+  - A question can be a follow-up that appears only after a particular earlier answer.
+- **New poll:** one question with its choices. It can show the totals to people after they answer.
+- **Who can answer:** each survey and poll is for **everyone** (anyone with the link) or **members only** (signed in to the member portal). Answers stay anonymous either way: no name, email or IP address is stored, only the date.
+- **Status:** a survey starts as a **draft**, which only founders can see; use **Preview** to try it without saving answers. **Open** it to collect answers, and **Close** it when you're done.
+- **Sharing:** **Copy link** gives the address to share, for example `/survey/?s=stipend-check-2027`.
+- **Responses:** charts per question, filters by respondent group, and **Export CSV**. Never report results for groups of fewer than 5.
+- **National survey:** the first national survey's draft is built in. Click **Add the national survey draft** on the Surveys & polls page to edit and open it. If you plan to publish the results in a journal, get approval from an Institutional Ethics Committee before opening it.
+
+## The members' area
+
+Every account created in the member portal gets three tabs: **My membership** (their application, card and ballots), **Education**, and **Careers help**.
+- **Members-only content:** in the console, tick **Members only** on a learning resource, event or career listing. It then appears in the members' area and is hidden from the public website.
+- **Career help requests:** requests for CV reviews, fellowship or job guidance, exam help, observership placements and research mentoring arrive in the console's **Career help** page. Assign each to a founder or mentor, reply by email, and close it when done.
+
+## Running a ballot
+
+In **Elections & ballots**, create a ballot as a draft, add the choices, set when voting opens and closes, then set it to **Open**. It appears in every approved member's portal.
+- **Poll / referendum:** every member within the voting window, with their fee paid, can vote.
+- **Election:** Article 23 also applies. Members must have joined at least 60 days before polling and must confirm their PG dates (the portal asks them), and voting must stay open for at least 72 hours.
+- Results appear only after you set the ballot to **Closed**. Turnout is visible to founders throughout.
+- **Electoral roll CSV** in **Members** downloads everyone eligible to vote today.
+
 ## Running the national survey
 
 The questionnaire lives in [`website/js/survey-def.js`](website/js/survey-def.js). Founders can read the whole thing at `/survey/?review=1` and print it or save it as a PDF.

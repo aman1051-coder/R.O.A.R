@@ -256,3 +256,31 @@ table.data.mx tbody tr { cursor: default; }
 
 .lf-who { margin: 18px 0 4px; font-size: .95rem; }
 .lf-who b { color: var(--text); }
+
+
+/* ---------- Surveys & polls ---------- */
+.sv-h { font-size: 1.3rem; margin: 28px 0 12px; }
+.sv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+.sv-card { padding: 20px 22px; border-radius: 20px; display: flex; flex-direction: column; gap: 14px; }
+.sv-card h3 { font-size: 1.08rem; margin: 0 0 4px; }
+.sv-card .meta-row { margin-bottom: 8px; align-items: center; }
+.sv-meta { font-size: .82rem; color: var(--muted); }
+.sv-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; }
+.pill.draft { color: var(--body); }
+.sv-settings-line { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+.sv-settings-line code { word-break: break-all; }
+.bsec { margin-top: 16px; }
+.bsec-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+.bsec-head h2 { margin: 2px 0 4px; }
+.bq-list { list-style: none; margin: 0 0 12px; padding: 0; }
+.bq { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; padding: 11px 0; border-top: 1px solid rgba(var(--fg),.08); }
+.bq:first-child { border-top: 0; }
+.bq-main { display: flex; gap: 12px; min-width: 0; }
+.bq-num { flex: 0 0 auto; font-size: .78rem; color: var(--muted); padding-top: 3px; font-variant-numeric: tabular-nums; }
+.bq-main b { color: var(--text); font-weight: 500; font-size: .95rem; }
+.bq-meta { font-size: .8rem; color: var(--muted); margin-top: 2px; }
+.bq-tools { display: flex; gap: 4px; flex: 0 0 auto; }
+.icon-btn { padding: 5px 9px; border-radius: 8px; font: inherit; font-size: .8rem; cursor: pointer; color: var(--text); background: rgba(var(--fg),.06); border: 1px solid rgba(var(--fg),.14); }
+.icon-btn:hover { background: rgba(var(--fg),.12); }
+.icon-btn.danger { color: #e5604b; }
+@media (max-width: 720px) { .bq { flex-direction: column; } .bsec-head { flex-direction: column; } .sv-grid { grid-template-columns: 1fr; } }

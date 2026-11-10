@@ -85,3 +85,10 @@
   h1, h2, legend, .o span, .s span, .matrix th { color: #000 !important; }
   .portal-wrap { padding: 0; }
 }
+
+/* Poll totals after answering */
+.poll-totals { max-width: 520px; margin: 18px auto 10px; text-align: left; display: grid; gap: 8px; }
+.pt-row { display: grid; grid-template-columns: minmax(120px, 40%) 1fr 48px; gap: 10px; align-items: center; font-size: .92rem; color: var(--text); }
+.pt-bar { height: 10px; border-radius: 999px; background: rgba(var(--fg),.1); overflow: hidden; }
+.pt-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--beam), var(--accent)); border-radius: inherit; }
+.pt-row b { text-align: right; }
