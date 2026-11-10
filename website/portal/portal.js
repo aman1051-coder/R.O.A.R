@@ -67,7 +67,20 @@
       const { error } = await sb.auth.updateUser({ password });
       if (error) throw error;
     },
-    async signOut() { if (LIVE) await sb.auth.signOut(); else store.del(DEMO_USER); },
+    async signOut() {
+      if (LIVE) await sb.auth.signOut(); else { store.del(DEMO_USER); store.del('roar-council-demo-user'); }
+      store.del('roar-me');
+      if (window.ROAR_ACCOUNT) window.ROAR_ACCOUNT.refresh();
+    },
+    async founderStatus(username) {
+      const { data, error } = await sb.rpc('founder_login_status', { p_username: username });
+      if (error) throw error;
+      return data;
+    },
+    async founderFirstLogin(username, password) {
+      const { error } = await sb.rpc('founder_first_login', { p_username: username, p_password: password });
+      if (error) throw error;
+    },
 
     async membershipOpen() {
       if (!LIVE) { const s = Demo.s.settings.find(x => x.key === 'membership_open'); return s ? !!s.value : true; }
@@ -189,7 +202,7 @@
     const t = currentTab();
     tabsEl.innerHTML = `<div class="wrap area-bar">
       <nav class="area-tabs" aria-label="Members' area">${TABS.map(([k, l]) => `<a href="#${k}"${k === t ? ' class="on" aria-current="page"' : ''}>${l}</a>`).join('')}</nav>
-      <div class="area-user"><span>${esc(shownName(sess))}</span><button class="btn btn-glass small" id="tab-out">Sign out</button></div>
+      <div class="area-user">${isFounder ? '<a class="btn btn-glass small" href="../council/">Founders\' console</a>' : `<span>${esc(shownName(sess))}</span>`}<button class="btn btn-glass small" id="tab-out">Sign out</button></div>
     </div>`;
     tabsEl.querySelector('#tab-out').addEventListener('click', async () => { await API.signOut(); location.hash = ''; render(); });
   }
@@ -199,6 +212,8 @@
     try {
       if (LIVE && /type=recovery/.test(initialHash) && !render.recovered) { render.recovered = true; return authView('newpass'); }
       sess = await API.session();
+      isFounder = sess ? await API.amFounder(sess) : false;
+      if (sess) shareAccount();
       drawTabs();
       if (!sess) return authView(sessionStorage.getItem('roar-signup') ? (sessionStorage.removeItem('roar-signup'), 'signup') : 'signin');
       const tab = currentTab();
@@ -206,15 +221,23 @@
       if (tab === 'careers') return careersView();
       if (tab === 'welfare') return welfareView();
       if (tab === 'community') {
-        isFounder = await API.amFounder(sess);
         if (!window.ROAR_COMMUNITY) throw new Error('Community failed to load. Refresh the page.');
         return window.ROAR_COMMUNITY.view(portalCtx, route().slice(1));
       }
       member = await API.me(sess);
-      isFounder = await API.amFounder(sess);
       if (!member) return (await API.membershipOpen()) ? wizard() : closedView();
       return dashboard();
     } catch (e) { fail(e); root.innerHTML = `<div class="card empty-state">Couldn't load the portal: ${esc(e.message || e)}</div>`; }
+  }
+
+  // One account for the whole site: the header on every page reads this to show the account menu
+  function shareAccount() {
+    let prev = store.get('roar-me') || {};
+    if (prev.email !== sess.email) prev = { email: sess.email };
+    if (isFounder) prev.founder = true;
+    if (!prev.name && sess.name) prev.name = sess.name;
+    store.set('roar-me', prev);
+    if (window.ROAR_ACCOUNT) window.ROAR_ACCOUNT.refresh();
   }
 
   // Shared with community.js
@@ -378,15 +401,15 @@
         <button type="button" class="${mode === 'signup' ? 'on' : ''}" data-mode="signup">Create account</button></div>` : '<p class="muted">We\'ll email you a link.</p>'}
       <form id="auth-form" novalidate>
         ${mode === 'signup' ? '<div class="row one"><div><label for="a-name">Full name</label><input id="a-name" required autocomplete="name"></div></div>' : ''}
-        ${mode !== 'newpass' ? `<div class="row one"><div><label for="a-email">${mode === 'signin' ? 'Email (founders: your username)' : 'Email'}</label><input id="a-email" type="${mode === 'signin' ? 'text' : 'email'}" required autocomplete="${mode === 'signin' ? 'username' : 'email'}" autocapitalize="none" spellcheck="false"></div></div>` : ''}
-        ${mode !== 'reset' ? `<div class="row one"><div><label for="a-pass">${mode === 'signin' ? 'Password' : 'Password (at least 10 characters)'}</label><input id="a-pass" type="password" required minlength="${mode === 'signin' ? 1 : 10}" autocomplete="${mode === 'signin' ? 'current-password' : 'new-password'}"></div></div>` : ''}
+        ${mode !== 'newpass' ? `<div class="row one"><div><label for="a-email">${mode === 'signin' ? 'Email, or Founder username / ID' : 'Email'}</label><input id="a-email" type="${mode === 'signin' ? 'text' : 'email'}" required autocomplete="${mode === 'signin' ? 'username' : 'email'}" autocapitalize="none" spellcheck="false"></div></div>` : ''}
+        ${mode !== 'reset' ? `<div class="row one"><div><label for="a-pass">${mode === 'signin' ? 'Password' : 'Password (at least 10 characters)'}</label><input id="a-pass" type="password"${mode === 'signin' ? '' : ' required minlength="10"'} autocomplete="${mode === 'signin' ? 'current-password' : 'new-password'}"></div></div>` : ''}
         <button class="btn btn-primary wide" type="submit">${{ signin: 'Sign in', signup: 'Create account', reset: 'Send reset link', newpass: 'Save password' }[mode]}</button>
         <p class="msg" id="a-msg" role="status"></p>
       </form>
       ${mode === 'signin' ? '<p style="margin:6px 0 0;font-size:.9rem"><button class="linklike" data-mode="reset">Forgot your password?</button></p>' : ''}
       ${mode === 'reset' ? '<p style="margin:6px 0 0;font-size:.9rem"><button class="linklike" data-mode="signin">Back to sign in</button></p>' : ''}
-      <div class="divider">Founders</div>
-      <p class="muted" style="font-size:.88rem;margin:0">Founders sign in here with the same username and password as the <a href="../council/">Founders' console</a>. Set your password in the console first.</p>
+      <div class="divider">Founders' Council</div>
+      <p class="muted" style="font-size:.88rem;margin:0">Founders use one login for the whole site: type your username or Founder ID (for example FC-02) above. The first time, you'll choose your own password. Once signed in, you can open the members' area, Community and the <a href="../council/">Founders' console</a> without signing in again.</p>
     </div>`;
     root.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => authView(b.dataset.mode)));
     const msg = (t, k) => { const el = $('#a-msg'); el.textContent = t; el.className = 'msg ' + (k || ''); };
@@ -394,15 +417,60 @@
       ev.preventDefault();
       if (!ev.target.reportValidity()) return;
       let email = ($('#a-email') || {}).value?.trim().toLowerCase();
-      if (email && mode === 'signin' && !email.includes('@')) email += FOUNDER_DOMAIN;   // founders sign in with their username
       const pass = ($('#a-pass') || {}).value;
       try {
         msg('Please wait…');
+        if (mode === 'signin' && email && !email.includes('@')) return founderSignIn(email, pass, msg);   // founders: username or Founder ID
+        if (mode === 'signin' && !pass) return msg('Enter your password.', 'err');
         if (mode === 'signin') { await API.signIn(email, pass); return render(); }
         if (mode === 'signup') { await API.signUp($('#a-name').value.trim(), email, pass); return msg('Check your inbox and click the link to confirm your email, then sign in.', 'ok'); }
         if (mode === 'reset') { await API.reset(email); return msg('If that email has an account, a reset link is on its way.', 'ok'); }
         if (mode === 'newpass') { await API.setPassword(pass); history.replaceState(null, '', location.pathname); toast('Password saved'); return render(); }
       } catch (e) { msg(e.message, 'err'); }
+    });
+  }
+
+  // Founders: username or Founder ID. First sign-in (or after the Chairman resets it): choose a password.
+  async function founderSignIn(id, pass, msg) {
+    const list = cfg.founderUsernames || [];
+    const m = id.match(/^fc-?0?([1-9])$/);
+    const username = m && list[+m[1] - 1] ? list[+m[1] - 1] : id;
+    const st = await API.founderStatus(username);
+    if (st === 'unknown') return msg("That isn't a Founders' Council username. Members sign in with their email address.", 'err');
+    if (st === 'choose_password') return founderChooseView(username);
+    if (!pass) return msg('Enter your password.', 'err');
+    try { await API.signIn(username + FOUNDER_DOMAIN, pass); }
+    catch (e) { return msg(/invalid/i.test(e.message) ? 'That password is not right. Try again, or ask the Chairman to reset it.' : e.message, 'err'); }
+    return render();
+  }
+  function founderChooseView(username) {
+    root.innerHTML = `<div class="auth glass pform">
+      <span class="eyebrow">Founders' Council</span>
+      <h1>Choose your password</h1>
+      <p>Welcome, <b>${esc(username)}</b>. This is your first sign-in, so choose your own password. You'll use it for the whole site: the members' area, Community and the Founders' console.</p>
+      <form id="fc-form" novalidate>
+        <div class="row one"><div><label for="fc-p1">Password (at least 10 characters)</label><input id="fc-p1" type="password" required minlength="10" autocomplete="new-password"></div></div>
+        <div class="row one"><div><label for="fc-p2">Type it again</label><input id="fc-p2" type="password" required minlength="10" autocomplete="new-password"></div></div>
+        <button class="btn btn-primary wide" type="submit">Save password and sign in</button>
+        <p class="msg" id="fc-msg" role="status"></p>
+      </form>
+      <p style="margin:6px 0 0;font-size:.9rem"><button class="linklike" id="fc-back">Back</button></p>
+    </div>`;
+    const say = (t, k) => { const el = $('#fc-msg'); el.textContent = t; el.className = 'msg ' + (k || ''); };
+    $('#fc-back').addEventListener('click', () => authView('signin'));
+    $('#fc-p1').focus();
+    $('#fc-form').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const p1 = $('#fc-p1').value, p2 = $('#fc-p2').value;
+      if (p1.length < 10) return say('Use at least 10 characters.', 'err');
+      if (p1 !== p2) return say('The two passwords do not match.', 'err');
+      try {
+        say('Saving your password…');
+        await API.founderFirstLogin(username, p1);
+        await API.signIn(username + FOUNDER_DOMAIN, p1);
+        toast('Password saved. Use it every time you sign in.');
+        render();
+      } catch (e) { say(e.message, 'err'); }
     });
   }
 
@@ -609,7 +677,7 @@
     </div>`;
 
     const card = `<div class="mcard${approved ? '' : ' pending'}" aria-label="Membership card">
-      <div class="mc-top"><span class="brand" style="color:#fff"><img class="brand-mark" src="../favicon.svg" alt=""><span class="brand-word">ROAR</span></span>${m.plan === 'founding' ? '<span class="fm">Founding Member</span>' : ''}</div>
+      <div class="mc-top"><span class="brand" style="color:#fff"><svg class="logo-svg" viewBox="-6 -56 880 282" aria-hidden="true" focusable="false"><path fill="currentColor" fill-rule="evenodd" d="M0 0H106A64 64 0 0 1 132 122L176 200H124L84 128H46V200H0ZM46 44H104A20 20 0 0 1 104 84H46ZM465 200L539 0H591L665 200H615L600 158H530L515 200ZM544 118H586L565 58ZM691 0H797A64 64 0 0 1 823 122L867 200H815L775 128H737V200H691ZM737 44H795A20 20 0 0 1 795 84H737Z"/><path d="M320 -8L331 -47L295 -47L306 -8Z" fill="#e8792b" fill-opacity="1.0"/><path d="M421 107L460 118L460 82L421 93Z" fill="#e8792b" fill-opacity="0.9"/><path d="M205 93L166 82L166 118L205 107Z" fill="#e8792b" fill-opacity="0.9"/><path d="M377.06 187.23L393.7 224.18L421.28 201.04L387.78 178.23Z" fill="#e8792b" fill-opacity="0.62"/><path d="M238.22 178.23L204.72 201.04L232.3 224.18L248.94 187.23Z" fill="#e8792b" fill-opacity="0.62"/><path fill="currentColor" fill-rule="evenodd" d="M211 100a102 102 0 1 0 204 0a102 102 0 1 0-204 0ZM251 100a62 62 0 1 0 124 0a62 62 0 1 0-124 0Z"/><path d="M314 85L318 43L308 43L312 85Z" fill="#e8792b" fill-opacity="1"/><path d="M328 101L370 105L370 95L328 99Z" fill="#e8792b" fill-opacity="1"/><path d="M298 99L256 95L256 105L298 101Z" fill="#e8792b" fill-opacity="1"/><path d="M321.88 112.13L345.81 146.88L353.47 140.45L323.41 110.85Z" fill="#e8792b" fill-opacity="0.72"/><path d="M302.59 110.85L272.53 140.45L280.19 146.88L304.12 112.13Z" fill="#e8792b" fill-opacity="0.72"/><circle cx="313" cy="100" r="31" fill="none" stroke="#e8792b" stroke-opacity=".45" stroke-width="2.5" stroke-dasharray="5 6"/><path d="M289 100H337M313 76V124" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/><circle cx="313" cy="100" r="10" fill="#e8792b"/></svg></span>${m.plan === 'founding' ? '<span class="fm">Founding Member</span>' : ''}</div>
       <div class="mc-name">${esc(m.full_name)}</div>
       <div class="mc-cat">${approved ? esc(R.CATEGORY_LABEL[m.category] || '') : 'Pending verification'}${m.institution ? ' · ' + esc(m.institution) : ''}</div>
       <div class="mc-row">

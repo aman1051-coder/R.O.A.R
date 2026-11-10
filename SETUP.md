@@ -84,6 +84,30 @@ The portal accepts sign-ups from day one, but applications stay **closed** until
 4. On approval the member gets a member number (ROAR-0001, ROAR-0002…) and a digital membership card.
 5. **Payment is manual for now.** The Treasurer emails bank details, and records the payment reference (and "paid until" date for annual members) in **Members**. An online payment gateway such as Razorpay can be added once the bank account is open.
 
+## One login for the whole site
+
+Everyone has a single account for the whole website. A founder can sign in on the Founders' console or the member portal with their **username or Founder ID** (for example `FC-02`). The first time, they choose their own password there. After that they stay signed in everywhere:
+- the console;
+- the members' area (Education, Careers, Welfare and their membership);
+- ROAR Community.
+
+Once signed in, every page shows an account button (their photo or initials) in the header, with links to the members' area, Community, their profile, the Founders' console (founders only) and **Sign out**. Signing out anywhere signs out everywhere. Members sign in with their email address as before.
+
+## Founders' photos
+
+When a founder uploads a profile picture to ROAR Community, it replaces their initials wherever the founders are listed: the About page's Founders' Council section, and the console's sidebar and Founders page. Schema PART 13 makes **only founders' current profile pictures** readable on the public site; every other Community photo stays private.
+
+## The logo
+
+The logo files are in `website/assets/logo/`:
+- `roar-logo.svg`: the full logo with the name, for light backgrounds;
+- `roar-logo-white.svg` and `roar-logo-on-navy.svg`: versions for dark backgrounds;
+- `roar-wordmark.svg`: just the ROAR wordmark;
+- `roar-mark.svg`: the gantry O on its own;
+- `website/favicon.svg`: the app and browser icon.
+
+The O is a linac gantry, with five weighted treatment beams converging on the isocentre. To change the shapes, edit and run `tools/make_logo.py`.
+
 ## The members' area
 
 Every account created in the member portal gets five tabs: **My membership** (their application, card and ballots), **Community**, **Education**, **Careers help** and **Welfare**. Founders can sign in to the portal too, with the same username and password they use for the console.
@@ -122,7 +146,7 @@ A members-only social space in the portal (`/portal/#community`) that brings tog
   - delete posts, comments and stories.
 
   Reports arrive in the console's **Community** page, and reporters' names are visible only to the Founders' Council.
-- **Setting it up:** run schema PARTs 11 and 12. If the rest of the schema is already in place, paste and run only those parts (from the PART 11 heading to the end of the file).
+- **Setting it up:** run schema PARTs 11, 12 and 13. If the rest of the schema is already in place, paste and run only those parts (from the PART 11 heading to the end of the file).
 
 ## Running a ballot
 

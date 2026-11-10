@@ -6,7 +6,9 @@ window.ROAR_CONFIG = {
   supabaseUrl: 'https://yngnekccjfhgtpbaifdl.supabase.co',
   supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluZ25la2NjamZoZ3RwYmFpZmRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzMzQ4MjUsImV4cCI6MjEwOTkxMDgyNX0.ktEhUS_AqMNJY2U0CusSeNLZ0WrgRlJAKPfJlUx1Y58',
   // Founders sign in with a username; this is the domain of their Supabase login address (see SETUP.md)
-  founderLoginDomain: 'founders.roar.invalid'
+  founderLoginDomain: 'founders.roar.invalid',
+  // Founder IDs FC-01 ... FC-09, in order. Founders can sign in anywhere on the site with their username or Founder ID.
+  founderUsernames: ['aakash.bellige', 'aman.gupta', 'kratika.bhatia', 'shriya.dhingra', 'deepika.sharma', 'arshida.pulimala', 'arsheya.gupta', 'honey.sharma', 'abhishek.bhadri']
 };
 
 // Demo mode (sample data kept in the browser) runs only on your own computer, or on the hosted site

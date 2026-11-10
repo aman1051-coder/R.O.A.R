@@ -235,7 +235,7 @@
   }
 
   // Founders sign in with a username (or their Founder ID, FC-01 … FC-09); an email address also works.
-  const FOUNDER_USERNAMES = ['aakash.bellige', 'aman.gupta', 'kratika.bhatia', 'shriya.dhingra', 'deepika.sharma', 'arshida.pulimala', 'arsheya.gupta', 'honey.sharma', 'abhishek.bhadri'];
+  const FOUNDER_USERNAMES = cfg.founderUsernames || ['aakash.bellige', 'aman.gupta', 'kratika.bhatia', 'shriya.dhingra', 'deepika.sharma', 'arshida.pulimala', 'arsheya.gupta', 'honey.sharma', 'abhishek.bhadri'];
   function loginEmail(id) {
     if (id.includes('@')) return id;
     const m = id.match(/^fc-?0?([1-9])$/);          // FC-01 -> the first founder's username
@@ -365,9 +365,20 @@
     afterSignIn(false);
   });
 
+  // One account for the whole site: tell the header (and the member portal, in demo mode) who is signed in
+  function shareAccount() {
+    try {
+      let prev = {}; try { prev = JSON.parse(localStorage.getItem('roar-me') || '{}') || {}; } catch (e) { }
+      const keep = prev.email === me.email ? prev : {};
+      localStorage.setItem('roar-me', JSON.stringify({ ...keep, email: me.email, name: me.name, founder: true, founder_id: me.founder_id || null }));
+      if (!LIVE) localStorage.setItem('roar-portal-demo-user', JSON.stringify({ email: me.email, name: me.name }));
+    } catch (e) { }
+  }
+
   async function signOut() {
     if (LIVE) await sb.auth.signOut();
-    else { try { localStorage.removeItem('roar-council-demo-user'); } catch (e) { } }
+    else { try { localStorage.removeItem('roar-council-demo-user'); localStorage.removeItem('roar-portal-demo-user'); } catch (e) { } }
+    try { localStorage.removeItem('roar-me'); } catch (e) { }
     me = null; lfUsername = null; lfShow('user');
     location.hash = '';
     init();
@@ -420,6 +431,8 @@
     $('#me-name').textContent = me.name;
     $('#me-role').textContent = [me.founder_id, me.cabinet_role].filter(Boolean).join(' · ');
     $('#me-initials').textContent = initials(me.name);
+    if (me.founder_id) $('#me-initials').dataset.founder = me.founder_id;   // their Community photo, if they have one
+    shareAccount();
     $('#side-nav').innerHTML = VIEWS.map(([k, label]) => k.startsWith('section:')
       ? `<div class="side-label">${esc(k.slice(8))}</div>` :
       `<a href="#/${k}" data-view="${k}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg>${label}<span class="count" hidden></span></a>`).join('');
@@ -1216,7 +1229,7 @@
         table: 'founders', key: 'email', order: ['sort'], eyebrow: 'Article 15A', title: "Founders' Council",
         intro: me.is_admin ? 'Only these accounts can open the console. Every other registered user, including members, can use only the member portal. A new founder also needs a matching login created in Supabase (SETUP.md, step 5).' : 'Only these accounts can open the console. Ask an admin founder to make changes.',
         canEdit: () => me.is_admin || me.can_reset_passwords,
-        columns: [{ key: 'founder_id', label: 'Founder ID' }, { key: 'name', label: 'Name' }, { key: 'username', label: 'Username' }, { key: 'cabinet_role', label: 'Cabinet role' },
+        columns: [{ key: 'founder_id', label: 'Founder ID' }, { key: 'name', label: 'Name', fmt: (v, r) => `<span class="fc-name"><span class="avatar xs"${r.founder_id ? ` data-founder="${esc(r.founder_id)}"` : ''}>${esc(initials(v))}</span>${esc(v)}</span>` }, { key: 'username', label: 'Username' }, { key: 'cabinet_role', label: 'Cabinet role' },
           { key: 'password_set', label: 'Password', fmt: v => v ? '<span class="pill done">chosen</span>' : '<span class="pill todo">not yet chosen</span>' },
           { key: 'is_admin', label: 'Admin', fmt: v => v ? '✓' : '' }],
         info: r => me.can_reset_passwords && r.username && r.username !== me.username ? `<dl class="info-kv"><dt>Password</dt><dd>${r.password_set ? 'Chosen by the founder' : 'Not chosen yet: they choose one at their next sign-in'}<br>

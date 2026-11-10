@@ -290,3 +290,10 @@ table.data.mx tbody tr { cursor: default; }
 .mod-item:first-of-type { border-top: 0; padding-top: 4px; }
 .mod-quote { margin: 8px 0 6px; padding: 10px 14px; border-left: 3px solid var(--accent); border-radius: 0 10px 10px 0; background: rgba(var(--fg),.04); color: var(--text); font-size: .94rem; overflow-wrap: anywhere; }
 .mod-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+/* One login for the whole site: shortcuts to the members' area */
+.side-site { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 10px 0 6px; }
+.side-site .btn { justify-content: center; text-align: center; padding-left: 6px; padding-right: 6px; font-size: .8rem; }
+/* Founders' photos in the Founders table */
+.avatar.xs { flex: 0 0 30px; width: 30px; height: 30px; font-size: .7rem; }
+.fc-name { display: inline-flex; align-items: center; gap: 10px; }

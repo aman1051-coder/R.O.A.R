@@ -1358,3 +1358,34 @@ drop trigger if exists posts_notify on public.posts;
 create trigger posts_notify after insert or update of accepted_comment_id on public.posts for each row execute function public.community_on_post();
 drop trigger if exists follows_notify on public.follows;
 create trigger follows_notify after insert on public.follows for each row execute function public.community_on_follow();
+
+-- =====================================================================
+-- PART 13: Founders' photos on the public website
+-- The profile picture a founder uploads to ROAR Community is shown wherever the founders are listed
+-- (the About page and the Founders' console). Only founders' current profile pictures become readable
+-- without signing in; every other Community photo stays private. Needs PART 11. Safe to run again.
+-- =====================================================================
+create or replace function public.is_founder_avatar(p_path text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.profiles p
+    join auth.users u on u.id = p.id
+    join public.founders f on f.email = lower(u.email)
+    where p.avatar_path = p_path)
+$$;
+grant execute on function public.is_founder_avatar(text) to anon, authenticated;
+
+create or replace function public.public_founder_photos() returns table (founder_id text, avatar_path text)
+language sql stable security definer set search_path = public as $$
+  select f.founder_id, p.avatar_path
+  from public.founders f
+  join auth.users u on lower(u.email) = f.email
+  join public.profiles p on p.id = u.id
+  where p.avatar_path is not null and f.founder_id is not null
+  order by f.founder_id
+$$;
+grant execute on function public.public_founder_photos() to anon, authenticated;
+
+drop policy if exists community_founder_photos on storage.objects;
+create policy community_founder_photos on storage.objects for select to anon, authenticated
+  using (bucket_id = 'community' and public.is_founder_avatar(name));

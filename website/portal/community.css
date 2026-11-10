@@ -20,9 +20,8 @@
 /* ---------- Left rail */
 .cx-rail { position: sticky; top: 96px; display: flex; flex-direction: column; gap: 4px; padding: 6px 0; }
 .cx-brand { display: flex; align-items: center; gap: 10px; padding: 8px 12px 16px; text-decoration: none; color: var(--text); font: 700 1.25rem "Fraunces", serif; }
-.cx-logo { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; color: #fff; font: 800 1.05rem "Fraunces", serif;
-  background: radial-gradient(circle at 30% 25%, var(--btn-from), var(--accent-deep) 70%); box-shadow: 0 6px 18px var(--accent-glow); }
-.cx-logo.big { width: 64px; height: 64px; border-radius: 20px; font-size: 2rem; }
+.cx-logo { display: block; width: 36px; height: 36px; border-radius: 10px; flex: none; box-shadow: 0 6px 18px rgba(21,35,63,.35); }
+.cx-logo.big { width: 76px; height: 76px; border-radius: 20px; }
 .cx-nav { position: relative; display: flex; align-items: center; gap: 14px; padding: 11px 14px; border-radius: 999px; text-decoration: none; color: var(--body); font-size: 1.02rem; font-weight: 500; transition: background .15s, color .15s; }
 .cx-nav:hover { background: rgba(var(--fg), .07); color: var(--text); }
 .cx-nav.on { color: var(--text); font-weight: 700; }

@@ -488,6 +488,7 @@
     me = await D.myProfile();
     const [what, arg] = route;
     if (!me) return setupView(false);
+    shareMe();
     const [fol, st] = await Promise.all([D.followingIds(), D.stories()]);
     cache.following = new Set(fol);
     cache.stories = st;
@@ -508,7 +509,7 @@
     const nav = (key, href, label, icon) => `<a href="${href}" class="cx-nav${active === key ? ' on' : ''}"${active === key ? ' aria-current="page"' : ''}>${ic(icon)}<span>${label}</span>${key === 'notifications' ? '<b class="cx-dot" data-unread hidden></b>' : ''}</a>`;
     root().innerHTML = `<div class="cx">
       <nav class="cx-rail" aria-label="Community">
-        <a class="cx-brand" href="#community"><span class="cx-logo">R</span><span>Community</span></a>
+        <a class="cx-brand" href="#community"><img class="cx-logo" src="../favicon.svg" alt=""><span>Community</span></a>
         ${nav('home', '#community', 'Home', 'home')}
         ${nav('explore', '#community/explore', 'Explore', 'explore')}
         ${nav('notifications', '#community/notifications', 'Notifications', 'bell')}
@@ -576,6 +577,34 @@
     }));
   }
 
+  // One account for the whole site: the header on every page shows this name and picture
+  async function thumbOf(url) {
+    const blob = await (await fetch(url)).blob();
+    const u = URL.createObjectURL(blob);
+    try {
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = u; });
+      const c = document.createElement('canvas'); c.width = c.height = 96;
+      const s = Math.min(img.naturalWidth, img.naturalHeight);
+      c.getContext('2d').drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, 96, 96);
+      return c.toDataURL('image/jpeg', 0.82);
+    } finally { URL.revokeObjectURL(u); }
+  }
+  async function shareMe() {
+    try {
+      let prev = JSON.parse(localStorage.getItem('roar-me') || '{}') || {};
+      if (prev.email !== ctx.sess.email) prev = { email: ctx.sess.email };
+      Object.assign(prev, { name: me.display_name, username: me.username });
+      if (ctx.isFounder) prev.founder = true;
+      if (!me.avatar_path) { delete prev.avatar; delete prev.avatarPath; }
+      else if (prev.avatarPath !== me.avatar_path || !prev.avatar) {
+        const url = (await D.urls([me.avatar_path]))[me.avatar_path];
+        if (url) { prev.avatar = await thumbOf(url); prev.avatarPath = me.avatar_path; }
+      }
+      localStorage.setItem('roar-me', JSON.stringify(prev));
+      if (window.ROAR_ACCOUNT) window.ROAR_ACCOUNT.refresh();
+    } catch (e) { console.warn(e); }
+  }
+
   // ------------------------------------------------------------------ profile setup / edit
   function setupView(editing) {
     const p = me || {};
@@ -585,10 +614,10 @@
     let avBlob = null, avPreview = null;
     const form = `
       <form class="cx-card cx-setup pform" id="cm-prof" novalidate>
-        ${editing ? '' : `<div class="cx-setup-hero"><span class="cx-logo big">R</span><h1>Join ROAR Community</h1><p>Ask questions, share articles and cases, follow colleagues, and post stories, with radiation oncology residents and young consultants across India. Only signed-in ROAR accounts can see it.</p></div>`}
+        ${editing ? '' : `<div class="cx-setup-hero"><img class="cx-logo big" src="../favicon.svg" alt=""><h1>Join ROAR Community</h1><p>Ask questions, share articles and cases, follow colleagues, and post stories, with radiation oncology residents and young consultants across India. Only signed-in ROAR accounts can see it.</p></div>`}
         <div class="cm-av-edit">
           <button type="button" class="cx-av-pick" id="cm-av-pick" aria-label="Choose a profile picture"><span id="cm-av-prev">${avatar(me ? p : { display_name: sess.name || sess.email }, 'xl', false)}</span><span class="cx-av-cam">${ic('image')}</span></button>
-          <div><b>Profile picture</b><p class="muted" style="font-size:.86rem;margin:4px 0 8px">A clear photo of you. We crop it to a square and remove location data from the file.</p>
+          <div><b>Profile picture</b><p class="muted" style="font-size:.86rem;margin:4px 0 8px">A clear photo of you. We crop it to a square and remove location data from the file.${ctx.isFounder ? " <b>As a member of the Founders' Council, your picture is also shown on the public website wherever the founders are listed.</b>" : ''}</p>
             ${p.avatar_path ? '<button type="button" class="linklike" id="cm-av-rm">Remove picture</button>' : ''}</div>
         </div>
         <div class="row">
@@ -628,6 +657,7 @@
         msg('Saving…');
         if (await D.usernameTaken(username)) return msg(`@${username} is taken. Try another.`, 'err');
         me = await D.saveProfile({ username, display_name: $('#cm-name').value.trim(), stage: $('#cm-stage').value.trim() || null, institution: $('#cm-inst').value.trim() || null, bio: $('#cm-bio').value.trim() || null }, avBlob);
+        shareMe();
         ctx.toast(editing ? 'Profile saved' : 'Welcome to ROAR Community');
         go(editing ? '#community/u/' + me.username : '#community');
       } catch (err) { msg(/duplicate|unique/i.test(err.message) ? `@${username} is taken. Try another.` : err.message, 'err'); }
