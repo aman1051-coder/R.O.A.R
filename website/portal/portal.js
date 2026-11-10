@@ -42,7 +42,7 @@
     save() { store.set(DEMO_KEY, this.s); },
     user() { return store.get(DEMO_USER); },
   };
-  if (!LIVE) Demo.load();
+  if (!LIVE && window.ROAR_DEMO_OK) Demo.load();   // demo data only in demo mode, never for public visitors
   const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() + Math.random().toString(16).slice(2));
 
   const API = {

@@ -19,7 +19,7 @@
   // ------------------------------------------------------------------
   let sb = null;
   let demo = null;
-  if (!LIVE) { try { demo = JSON.parse(localStorage.getItem(DEMO_KEY)); } catch (e) { demo = null; } }
+  if (!LIVE && window.ROAR_DEMO_OK) { try { demo = JSON.parse(localStorage.getItem(DEMO_KEY)); } catch (e) { demo = null; } }
 
   function loadSupabase() {
     if (!LIVE) return Promise.resolve(null);
