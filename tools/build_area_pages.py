@@ -34,7 +34,7 @@ FOOT = """</main>
 <script src="main.js"></script>
 <script src="js/config.js"></script>
 <script src="js/public.js"></script>
-<script src="js/members-area.js"></script>
+<script src="js/members-area.js"></script>{extra_js}
 </body>
 </html>
 """
@@ -94,7 +94,7 @@ PAGES = {
     desc="ROAR's vision for radiation oncology training in India: fair exposure for every resident, Contour Club, observerships, a curated learning library and members' sessions.",
     body=hero('Education', 'Excellent training for <span class="glow">every resident.</span>',
               "Where you train should not decide what you learn. ROAR's programmes aim to give every radiation oncology resident in India fair exposure to modern practice, good teaching and a research culture.")
-      + zone('education', 'Your learning library and sessions', 'Members see the learning library, upcoming sessions and case files right here. Creating an account is free for radiation oncology residents and radiation oncologists in India.', '#education')
+      + zone('education', 'Your learning library and sessions', 'Members see the learning library, upcoming sessions and case files right here. Creating an account is free for radiation oncology residents and radiation oncologists in India.', '#learning')
       + pillars('Our vision', 'Training that does not depend on where you were placed.', [
           ('Equal exposure', 'A minimum exposure standard: the techniques, sites and planning experience every residency should cover, so gaps can be seen and closed.'),
           ('Learning together', 'Live contouring, case discussions and teaching sessions that connect residents across centres with experienced teachers.'),
@@ -162,8 +162,50 @@ PAGES = {
           extra='<div class="card" style="margin-top:22px"><h3>Community guidelines</h3><p><b>Protect patients:</b> never post anything that could identify a patient. <b>Respect everyone</b>, seniors, peers and other specialties alike. <b>Cite sources.</b> <b>No advertising</b> without the Founders’ Council’s approval. The Founders’ Council reviews every report.</p></div>', alt=True)),
 }
 
+
+PAGES['mentorship.html'] = dict(page='mentorship', title='Mentorship',
+    desc="ROAR Mentorship: one-to-one guidance for India's radiation oncology residents from experienced colleagues, on CVs, fellowships, exams, research and careers.",
+    body=hero('Mentorship', 'Someone who has <span class="glow">walked the path.</span>',
+              "Every young radiation oncologist deserves a mentor. ROAR matches residents with senior residents, consultants and alumni who give an hour a month to help with a CV, a fellowship, an exam or a first research project.")
+      + zone('mentorship', 'Find your mentor', 'Members can browse mentors by area and the help they offer, and send a request. Mentors approved by the Founders\' Council appear here.', '#mentorship')
+      + pillars('How it works', 'Three steps.', [
+          ('Find a mentor', 'Browse mentors by area (Head &amp; Neck, SBRT, Brachytherapy and more) and by what they help with: CVs, fellowships, exams, research or careers.'),
+          ('Send a request', 'Say where you are in training, what you are aiming for and any deadlines. Up to three requests can wait for an answer at a time.'),
+          ('Meet', 'When a mentor accepts, you both see each other\'s email and agree how to meet. Mark the request done when you have what you need.')])
+      + grid('Mentors', 'Why mentor with ROAR.', [
+          ('Give back', 'Help the next generation avoid the mistakes you made, an hour a month.'),
+          ('On your terms', 'Choose the areas and kinds of help you offer, how many mentees you take, and pause at any time.'),
+          ('Approved and listed', 'The Founders\' Council approves every mentor, so members know who they are talking to.'),
+          ('Recognised', 'Mentors are acknowledged in ROAR\'s annual report (with their permission).'),
+          ('Private', 'Contact details are shared only when you accept a request.'),
+          ('Open to all stages', 'Senior residents can mentor juniors; consultants and alumni can mentor everyone.')],
+          extra='<p class="note" style="margin-top:20px">Ready to help? <a href="portal/#mentorship">Offer to mentor</a> in My ROAR.</p>', alt=True))
+
+PAGES['research.html'] = dict(page='research', title='Research',
+    desc="The ROAR Research Collective: multi-centre research led by radiation oncology residents across India, with shared authorship and mentorship.",
+    body=hero('Research', 'Research by residents, <span class="glow">across India.</span>',
+              "The ROAR Research Collective brings residents from many centres together on questions that matter to Indian patients and trainees, with shared authorship, mentorship and support from the Research Society.")
+      + """<section class="section-tight" id="projects">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">Projects</span><h2>Open projects.</h2><p class="lead">Express interest to join as a site or a contributor. Members see a short form; the project lead gets in touch.</p></div>
+    <div id="research-projects" class="research-list" aria-live="polite"><p class="muted">Loading projects…</p></div>
+  </div>
+</section>
+"""
+      + pillars('Our approach', 'Research that includes everyone.', [
+          ('Multi-centre by design', 'Large centres and small ones contribute equally, so results reflect practice across India.'),
+          ('Shared authorship', 'Clear authorship rules agreed at the start, so every contributor is credited.'),
+          ('Mentored', 'Each project has a senior adviser, and new researchers learn methods as they go.')])
+      + grid('How to take part', 'Ways to get involved.', [
+          ('Join a project', 'Express interest in an open project as a site lead or contributor.'),
+          ('Propose a project', 'Have an idea for a multi-centre study? <a href="contact.html?topic=Research%20proposal">Tell the Research Society</a>.'),
+          ('Learn methods', 'Statistics, protocol writing and publishing sessions in the learning programme.'),
+          ('The national survey', 'ROAR\'s first project: the national survey of radiation oncology training and welfare.'),
+          ('Ethics and data', 'Help with ethics committee approval, consent and data protection for multi-centre work.'),
+          ('Publish', 'Guidance on journals, reporting standards and presenting at conferences.')], alt=True))
+
 for name, p in PAGES.items():
-    html = HEAD.format(**p) + p['body'] + FOOT
+    html = HEAD.format(**p) + p['body'] + FOOT.replace('{extra_js}', '\n<script src="js/research.js"></script>' if name == 'research.html' else '')
     open(os.path.join(ROOT, name), 'w', encoding='utf8').write(html)
     print('wrote', name)
 

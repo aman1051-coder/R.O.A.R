@@ -188,12 +188,14 @@
   // ===================================================================
   let sess = null, member = null, isFounder = false;
 
-  // Tabs of the members' area. Every signed-in account gets Education and Careers help;
-  // the membership tab holds the application, card and ballots.
-  const TABS = [['membership', 'My membership'], ['community', 'Community'], ['education', 'Education'], ['careers', 'Careers'], ['welfare', 'Welfare']];
+  // My ROAR: the tabs of the members' area. Home, Learning, Mentorship and Settings live in hub.js,
+  // Community in community.js; Membership (application, card, ballots), Careers and Welfare are here.
+  const TABS = [['home', 'Home'], ['membership', 'Membership'], ['community', 'Community'], ['learning', 'Learning'], ['careers', 'Careers'],
+    ['mentorship', 'Mentorship'], ['welfare', 'Welfare'], ['settings', 'Settings']];
+  const ALIAS = { education: 'learning', '': 'home' };   // older links
   const tabsEl = document.getElementById('portal-tabs');
   const route = () => location.hash.replace('#', '').split('/');
-  const currentTab = () => { const t = route()[0]; return TABS.some(x => x[0] === t) ? t : 'membership'; };
+  const currentTab = () => { let t = route()[0]; t = ALIAS[t] !== undefined ? ALIAS[t] : t; return TABS.some(x => x[0] === t) ? t : 'home'; };
   const FOUNDER_DOMAIN = '@' + (cfg.founderLoginDomain || 'founders.roar.invalid');
   const shownName = s => s.email.endsWith(FOUNDER_DOMAIN) ? s.email.slice(0, -FOUNDER_DOMAIN.length) : s.email;
   function drawTabs() {
@@ -201,7 +203,7 @@
     tabsEl.hidden = false;
     const t = currentTab();
     tabsEl.innerHTML = `<div class="wrap area-bar">
-      <nav class="area-tabs" aria-label="Members' area">${TABS.map(([k, l]) => `<a href="#${k}"${k === t ? ' class="on" aria-current="page"' : ''}>${l}</a>`).join('')}</nav>
+      <nav class="area-tabs" aria-label="My ROAR">${TABS.map(([k, l]) => `<a href="#${k}"${k === t ? ' class="on" aria-current="page"' : ''}>${l}</a>`).join('')}</nav>
       <div class="area-user">${isFounder ? '<a class="btn btn-glass small" href="../council/">Founders\' console</a>' : `<span>${esc(shownName(sess))}</span>`}<button class="btn btn-glass small" id="tab-out">Sign out</button></div>
     </div>`;
     tabsEl.querySelector('#tab-out').addEventListener('click', async () => { await API.signOut(); location.hash = ''; render(); });
@@ -219,7 +221,10 @@
       drawTabs();
       if (!sess) return authView(sessionStorage.getItem('roar-signup') ? (sessionStorage.removeItem('roar-signup'), 'signup') : 'signin');
       const tab = currentTab();
-      if (tab === 'education') return educationView();
+      if (['home', 'learning', 'mentorship', 'settings'].includes(tab)) {
+        if (!window.ROAR_HUB) throw new Error('My ROAR failed to load. Refresh the page.');
+        return window.ROAR_HUB.view(portalCtx, tab, route().slice(1));
+      }
       if (tab === 'careers') return careersView();
       if (tab === 'welfare') return welfareView();
       if (tab === 'community') {
@@ -241,6 +246,8 @@
     store.set('roar-me', prev);
     if (window.ROAR_ACCOUNT) window.ROAR_ACCOUNT.refresh();
   }
+
+  root.addEventListener('click', e => { const b = e.target.closest('#pay-online'); if (b) payOnline(b); });
 
   // Shared with community.js
   const portalCtx = {
@@ -479,7 +486,7 @@
 
   function wantedSection() {
     const t = location.hash.replace('#', '');
-    const label = { education: 'Education', careers: 'Careers', welfare: 'Welfare', community: 'ROAR Community' }[t.split('/')[0]];
+    const label = { education: 'Learning', learning: 'Learning', careers: 'Careers', welfare: 'Welfare', community: 'ROAR Community', mentorship: 'Mentorship', settings: 'Settings', home: 'My ROAR' }[t.split('/')[0]];
     return label ? `<div class="notice">${label} is for members. Sign in, or create a free account, to continue.</div>` : '';
   }
 
@@ -653,6 +660,23 @@
   // ===================================================================
   // Dashboard
   // ===================================================================
+  // Online payment (Razorpay), shown only once payments.razorpayKeyId is set in config.js
+  async function payOnline(btn) {
+    btn.disabled = true; btn.textContent = 'Starting payment…';
+    try {
+      const { data, error } = await sb.functions.invoke('razorpay-order', { body: {} });
+      if (error || !data || data.error) throw new Error((data && data.error) || (error && error.message) || 'Could not start the payment.');
+      await new Promise((res, rej) => { if (window.Razorpay) return res(); const sc = document.createElement('script'); sc.src = 'https://checkout.razorpay.com/v1/checkout.js'; sc.onload = res; sc.onerror = () => rej(new Error('Could not load Razorpay.')); document.head.appendChild(sc); });
+      const rz = new window.Razorpay({
+        key: data.key_id, order_id: data.order_id, amount: data.amount, currency: data.currency, name: 'ROAR', description: 'Membership fee',
+        prefill: { email: data.email }, theme: { color: '#e8792b' },
+        handler: () => { toast('Payment received. Your membership will update in a minute.'); setTimeout(render, 4000); },
+        modal: { ondismiss: () => { btn.disabled = false; btn.textContent = 'Pay online'; } },
+      });
+      rz.open();
+    } catch (e) { fail(e); btn.disabled = false; btn.textContent = 'Pay online'; }
+  }
+
   async function dashboard() {
     const m = member;
     const approved = m.status === 'approved';
@@ -694,7 +718,9 @@
       <h2>Membership &amp; payment</h2>
       <dl class="kv"><dt>Plan</dt><dd>${esc(R.PLAN_LABEL[m.plan])}</dd>
         <dt>Status</dt><dd>${m.fee_deferred ? 'Fee deferred (Article 8J)' : paid ? (m.plan === 'annual' ? 'Paid until ' + fmt(m.paid_until) : 'Paid for life') : 'Awaiting payment'}</dd></dl>
-      ${!paid && !m.fee_deferred ? `<div class="notice" style="margin-top:14px">The Treasurer will email you payment details. Quote your member number <b>${esc(m.member_no)}</b> with your payment.</div>` : ''}
+      ${!paid && !m.fee_deferred && approved && LIVE && cfg.payments && cfg.payments.razorpayKeyId
+        ? `<div class="pay-online"><button class="btn btn-primary" id="pay-online" type="button">Pay ₹${esc((R.FEES || {})[m.plan] || '')} online</button><span class="muted">UPI, cards or net banking, through Razorpay. Your membership updates within a minute.</span></div>`
+        : !paid && !m.fee_deferred ? `<div class="notice" style="margin-top:14px">The Treasurer will email you payment details. Quote your member number <b>${esc(m.member_no)}</b> with your payment.</div>` : ''}
       ${m.plan === 'annual' && paid && m.paid_until <= R.addMonths(today, 1) ? '<div class="notice warn" style="margin-top:14px">Your membership is due for renewal within a month.</div>' : ''}
     </div>`;
 

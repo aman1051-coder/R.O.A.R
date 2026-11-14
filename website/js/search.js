@@ -33,9 +33,15 @@
     ['ROAR Community', 'community.html', 'community social feed posts questions ask answer articles case discussion photos profile username profile picture members network forum discussion'],
     ['Community: Explore topics and hashtags', 'portal/#community/explore', 'explore search people hashtags trending topics head and neck breast sbrt srs brachytherapy physics contouring exams careers research wellbeing'],
     ['Community: Notifications', 'portal/#community/notifications', 'notifications likes replies mentions followers'],
-    ['Members area: Education', 'portal/#education', 'members education recordings case files contour club sessions members only library'],
+    ['Members area: Education', 'portal/#learning', 'members education recordings case files contour club sessions members only library'],
     ['Members area: Careers help', 'portal/#careers', 'career help CV review fellowship guidance job search exam preparation observership placement research mentorship mentor'],
     ['Member portal', 'portal/', 'member login sign in apply application membership card ballots vote'],
+    ['My ROAR: members dashboard', 'portal/', 'my roar dashboard member portal sign in login account card ballots settings'],
+    ['Mentorship', 'mentorship.html', 'mentor mentorship find a mentor offer to mentor guidance CV fellowship exam research career'],
+    ['Research Collective', 'research.html', 'research collective projects multi-centre study authorship protocol ethics publish'],
+    ['CME log and certificates', 'portal/#learning', 'CME continuing medical education hours certificate check in log attendance'],
+    ['Check a certificate', 'certificate.html', 'verify certificate number genuine attendance'],
+    ['Job alerts and notifications', 'portal/#settings', 'job alerts email notifications settings preferences'],
     ['Privacy', 'privacy.html', 'privacy data personal information delete'],
   ];
 

@@ -1541,3 +1541,411 @@ language sql stable security definer set search_path = public as $$
   order by f.sort nulls last, f.founder_id
 $$;
 grant execute on function public.public_founders() to anon, authenticated;
+
+-- =====================================================================
+-- PART 15: My ROAR — mentorship, CME and certificates, research projects,
+-- job alerts and email notifications, and online payments
+-- Needs PARTs 1-14. Safe to run again.
+-- =====================================================================
+
+-- ---------------------------------------------------------------- Mentorship
+-- Experienced members offer to mentor; the Founders' Council approves each mentor before they are listed.
+create table if not exists public.mentors (
+  user_id      uuid primary key default auth.uid() references auth.users(id) on delete cascade,
+  display_name text not null check (char_length(display_name) between 2 and 80),
+  headline     text check (char_length(headline) <= 160),            -- e.g. "Consultant, thoracic and SBRT"
+  areas        text[] not null default '{}' check (cardinality(areas) <= 10),
+  offers       text[] not null default '{}' check (cardinality(offers) <= 8 and offers <@ array['CV review','Fellowship guidance','Exam preparation','Research','Career planning','Observership','Wellbeing']),
+  institution  text check (char_length(institution) <= 200),
+  city         text check (char_length(city) <= 80),
+  capacity     int not null default 2 check (capacity between 0 and 10),
+  bio          text check (char_length(bio) <= 1200),
+  status       text not null default 'pending' check (status in ('pending','approved','paused')),
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+create table if not exists public.mentorship_requests (
+  id          uuid primary key default gen_random_uuid(),
+  mentee_id   uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  mentee_name text not null check (char_length(mentee_name) between 2 and 120),
+  mentor_id   uuid not null references public.mentors(user_id) on delete cascade,
+  topic       text not null check (topic in ('CV review','Fellowship guidance','Exam preparation','Research','Career planning','Observership','Wellbeing')),
+  message     text not null check (char_length(message) between 10 and 2000),
+  status      text not null default 'pending' check (status in ('pending','accepted','declined','closed','withdrawn')),
+  mentor_note text check (char_length(mentor_note) <= 1000),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  check (mentee_id <> mentor_id)
+);
+create index if not exists mentorship_mentor_idx on public.mentorship_requests (mentor_id, status);
+create index if not exists mentorship_mentee_idx on public.mentorship_requests (mentee_id, created_at desc);
+
+create or replace function public.mentors_guard() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  new.updated_at := now();
+  if public.is_founder() then return new; end if;
+  if tg_op = 'INSERT' then new.status := 'pending'; new.user_id := auth.uid(); return new; end if;
+  -- A mentor can pause or resume themselves, but only founders approve
+  if not (old.status in ('approved','paused') and new.status in ('approved','paused')) then new.status := old.status; end if;
+  new.user_id := old.user_id; new.created_at := old.created_at;
+  return new;
+end $$;
+drop trigger if exists mentors_guard on public.mentors;
+create trigger mentors_guard before insert or update on public.mentors for each row execute function public.mentors_guard();
+
+create or replace function public.mentorship_guard() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare m public.mentors; open_count int;
+begin
+  new.updated_at := now();
+  if tg_op = 'INSERT' then
+    select * into m from public.mentors where user_id = new.mentor_id;
+    if m.user_id is null or m.status <> 'approved' then raise exception 'That mentor is not taking requests right now.'; end if;
+    select count(*) into open_count from public.mentorship_requests where mentee_id = new.mentee_id and status = 'pending';
+    if open_count >= 3 then raise exception 'You already have 3 requests waiting for an answer. Withdraw one, or wait for a reply.'; end if;
+    new.status := 'pending'; new.mentor_note := null;
+    return new;
+  end if;
+  if public.is_founder() then return new; end if;
+  new.mentee_id := old.mentee_id; new.mentor_id := old.mentor_id; new.topic := old.topic; new.message := old.message;
+  new.mentee_name := old.mentee_name; new.created_at := old.created_at;
+  if auth.uid() = old.mentor_id then
+    if new.status not in ('accepted','declined','closed') or (old.status not in ('pending','accepted') ) then new.status := old.status; end if;
+  elsif auth.uid() = old.mentee_id then
+    new.mentor_note := old.mentor_note;
+    if new.status not in ('withdrawn','closed') or old.status not in ('pending','accepted') then new.status := old.status; end if;
+  else
+    raise exception 'Not your request.';
+  end if;
+  return new;
+end $$;
+drop trigger if exists mentorship_guard on public.mentorship_requests;
+create trigger mentorship_guard before insert or update on public.mentorship_requests for each row execute function public.mentorship_guard();
+
+alter table public.mentors enable row level security;
+alter table public.mentorship_requests enable row level security;
+drop policy if exists mentors_read on public.mentors;
+drop policy if exists mentors_own on public.mentors;
+drop policy if exists mentors_edit on public.mentors;
+drop policy if exists mentors_founders on public.mentors;
+create policy mentors_read on public.mentors for select to authenticated using (status = 'approved' or user_id = auth.uid() or public.is_founder());
+create policy mentors_own on public.mentors for insert to authenticated with check (user_id = auth.uid());
+create policy mentors_edit on public.mentors for update to authenticated using (user_id = auth.uid() or public.is_founder()) with check (user_id = auth.uid() or public.is_founder());
+create policy mentors_founders on public.mentors for delete to authenticated using (user_id = auth.uid() or public.is_founder());
+drop policy if exists mreq_read on public.mentorship_requests;
+drop policy if exists mreq_insert on public.mentorship_requests;
+drop policy if exists mreq_update on public.mentorship_requests;
+create policy mreq_read on public.mentorship_requests for select to authenticated using (mentee_id = auth.uid() or mentor_id = auth.uid() or public.is_founder());
+create policy mreq_insert on public.mentorship_requests for insert to authenticated with check (mentee_id = auth.uid());
+create policy mreq_update on public.mentorship_requests for update to authenticated using (mentee_id = auth.uid() or mentor_id = auth.uid() or public.is_founder()) with check (true);
+
+-- Once a request is accepted, mentor and mentee can see each other's email address
+create or replace function public.mentorship_contacts(p_request uuid) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select jsonb_build_object('mentee_email', me.email, 'mentor_email', mo.email)
+  from public.mentorship_requests r join auth.users me on me.id = r.mentee_id join auth.users mo on mo.id = r.mentor_id
+  where r.id = p_request and r.status = 'accepted' and auth.uid() in (r.mentee_id, r.mentor_id)
+$$;
+grant execute on function public.mentorship_contacts(uuid) to authenticated;
+
+-- ---------------------------------------------------------------- CME: check-in codes, attendance, certificates, personal log
+alter table public.events add column if not exists cme_hours numeric(4,1) check (cme_hours is null or cme_hours between 0 and 100);
+
+-- Check-in codes are secret, so they live in their own founders-only table
+create table if not exists public.event_checkins (
+  event_id   uuid primary key references public.events(id) on delete cascade,
+  code       text not null check (code ~ '^[A-Za-z0-9-]{4,20}$'),
+  opens_at   timestamptz,
+  closes_at  timestamptz
+);
+alter table public.event_checkins enable row level security;
+drop policy if exists checkins_founders on public.event_checkins;
+create policy checkins_founders on public.event_checkins for all using (public.is_founder()) with check (public.is_founder());
+
+create table if not exists public.attendance (
+  id                 uuid primary key default gen_random_uuid(),
+  event_id           uuid not null references public.events(id) on delete cascade,
+  user_id            uuid not null references auth.users(id) on delete cascade,
+  name_on_certificate text not null check (char_length(name_on_certificate) between 2 and 120),
+  method             text not null default 'code' check (method in ('code','founder')),
+  certificate_no     text not null unique default ('ROAR-' || to_char(now() at time zone 'Asia/Kolkata', 'YYYY') || '-' || upper(substr(md5(gen_random_uuid()::text), 1, 8))),
+  created_at         timestamptz not null default now(),
+  unique (event_id, user_id)
+);
+alter table public.attendance enable row level security;
+drop policy if exists attendance_read on public.attendance;
+drop policy if exists attendance_founders on public.attendance;
+create policy attendance_read on public.attendance for select to authenticated using (user_id = auth.uid() or public.is_founder());
+create policy attendance_founders on public.attendance for all to authenticated using (public.is_founder()) with check (public.is_founder());
+
+-- A member checks in with the code shown during a ROAR session and gets a numbered certificate
+create or replace function public.event_checkin(p_event uuid, p_code text, p_name text) returns text
+language plpgsql security definer set search_path = public as $$
+declare c public.event_checkins; e public.events; existing text;
+begin
+  if auth.uid() is null then raise exception 'Sign in to check in.'; end if;
+  select * into e from public.events where id = p_event and published;
+  if e.id is null then raise exception 'That session was not found.'; end if;
+  select * into c from public.event_checkins where event_id = p_event;
+  if c.event_id is null or upper(trim(p_code)) <> upper(c.code) then raise exception 'That code is not right. Check the code shown in the session.'; end if;
+  if (c.opens_at is not null and now() < c.opens_at) or (c.closes_at is not null and now() > c.closes_at) then raise exception 'Check-in for this session is closed.'; end if;
+  select certificate_no into existing from public.attendance where event_id = p_event and user_id = auth.uid();
+  if existing is not null then return existing; end if;
+  insert into public.attendance (event_id, user_id, name_on_certificate, method)
+    values (p_event, auth.uid(), coalesce(nullif(trim(p_name), ''), 'ROAR member'), 'code') returning certificate_no into existing;
+  return existing;
+end $$;
+grant execute on function public.event_checkin(uuid, text, text) to authenticated;
+
+-- Founders can record attendance for someone who could not check in
+create or replace function public.founder_mark_attendance(p_event uuid, p_email text, p_name text) returns text
+language plpgsql security definer set search_path = public as $$
+declare uid uuid; no text;
+begin
+  if not public.is_founder() then raise exception 'Only founders can record attendance.'; end if;
+  select id into uid from auth.users where lower(email) = lower(trim(p_email));
+  if uid is null then raise exception 'No ROAR account uses that email address.'; end if;
+  insert into public.attendance (event_id, user_id, name_on_certificate, method) values (p_event, uid, p_name, 'founder')
+    on conflict (event_id, user_id) do update set name_on_certificate = excluded.name_on_certificate
+    returning certificate_no into no;
+  return no;
+end $$;
+grant execute on function public.founder_mark_attendance(uuid, text, text) to authenticated;
+
+-- Anyone can check that a certificate is genuine (no email or account details are shown)
+create or replace function public.verify_certificate(p_no text) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select jsonb_build_object('certificate_no', a.certificate_no, 'name', a.name_on_certificate, 'event', e.title, 'kind', e.kind,
+    'starts_on', e.starts_on, 'ends_on', e.ends_on, 'format', e.format, 'cme_hours', e.cme_hours, 'issued', a.created_at)
+  from public.attendance a join public.events e on e.id = a.event_id
+  where a.certificate_no = upper(trim(p_no))
+$$;
+grant execute on function public.verify_certificate(text) to anon, authenticated;
+
+-- A member's own record of learning, including activities outside ROAR
+create table if not exists public.cme_entries (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  title         text not null check (char_length(title) between 2 and 300),
+  provider      text check (char_length(provider) <= 200),
+  category      text not null default 'Conference' check (category in ('Conference','Workshop','Course','Webinar','Journal club','Teaching','Research','Other')),
+  activity_date date not null,
+  hours         numeric(4,1) not null check (hours > 0 and hours <= 100),
+  evidence_url  text check (evidence_url is null or evidence_url ~* '^https?://'),
+  notes         text check (char_length(notes) <= 1000),
+  created_at    timestamptz not null default now()
+);
+alter table public.cme_entries enable row level security;
+drop policy if exists cme_own on public.cme_entries;
+create policy cme_own on public.cme_entries for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- ---------------------------------------------------------------- Research projects (the Research Collective)
+create table if not exists public.research_projects (
+  id          uuid primary key default gen_random_uuid(),
+  title       text not null check (char_length(title) between 3 and 300),
+  summary     text not null check (char_length(summary) between 10 and 3000),
+  area        text check (char_length(area) <= 80),
+  lead        text check (char_length(lead) <= 200),
+  status      text not null default 'recruiting' check (status in ('proposed','recruiting','ongoing','completed','published')),
+  sites_wanted int check (sites_wanted between 0 and 500),
+  link_url    text check (link_url is null or link_url ~* '^https?://'),
+  published   boolean not null default false,
+  created_at  timestamptz not null default now()
+);
+create table if not exists public.research_interest (
+  id          uuid primary key default gen_random_uuid(),
+  project_id  uuid not null references public.research_projects(id) on delete cascade,
+  user_id     uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  name        text not null check (char_length(name) between 2 and 120),
+  institution text check (char_length(institution) <= 200),
+  role        text check (char_length(role) <= 120),
+  message     text check (char_length(message) <= 1500),
+  created_at  timestamptz not null default now(),
+  unique (project_id, user_id)
+);
+alter table public.research_projects enable row level security;
+alter table public.research_interest enable row level security;
+drop policy if exists research_read on public.research_projects;
+drop policy if exists research_founders on public.research_projects;
+create policy research_read on public.research_projects for select to anon, authenticated using (published or public.is_founder());
+create policy research_founders on public.research_projects for all to authenticated using (public.is_founder()) with check (public.is_founder());
+drop policy if exists rinterest_own on public.research_interest;
+drop policy if exists rinterest_founders on public.research_interest;
+create policy rinterest_own on public.research_interest for all to authenticated using (user_id = auth.uid() or public.is_founder()) with check (user_id = auth.uid());
+
+-- ---------------------------------------------------------------- Notification settings, job alerts and the email outbox
+create table if not exists public.alert_prefs (
+  user_id          uuid primary key default auth.uid() references auth.users(id) on delete cascade,
+  email_jobs       boolean not null default false,
+  job_kinds        text[] not null default '{}',
+  job_keywords     text check (char_length(job_keywords) <= 200),
+  email_mentorship boolean not null default true,
+  email_events     boolean not null default false,
+  updated_at       timestamptz not null default now()
+);
+alter table public.alert_prefs enable row level security;
+drop policy if exists alerts_own on public.alert_prefs;
+create policy alerts_own on public.alert_prefs for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- Emails waiting to be sent. Written only by the triggers below; sent by the send-email function
+-- (supabase/functions/send-email) once an email service is connected. Nobody can read or change it except founders.
+create table if not exists public.email_outbox (
+  id         uuid primary key default gen_random_uuid(),
+  to_user    uuid references auth.users(id) on delete cascade,
+  to_email   text not null,
+  kind       text not null,
+  subject    text not null,
+  body       text not null,
+  link       text,
+  created_at timestamptz not null default now(),
+  sent_at    timestamptz,
+  error      text
+);
+create index if not exists email_outbox_unsent on public.email_outbox (created_at) where sent_at is null;
+alter table public.email_outbox enable row level security;
+drop policy if exists outbox_founders on public.email_outbox;
+create policy outbox_founders on public.email_outbox for select to authenticated using (public.is_founder());
+
+create or replace function public.queue_email(p_user uuid, p_kind text, p_subject text, p_body text, p_link text) returns void
+language plpgsql security definer set search_path = public as $$
+declare addr text;
+begin
+  select email into addr from auth.users where id = p_user;
+  if addr is null or addr like '%.invalid' then return; end if;     -- founders' sign-in addresses can't receive email
+  insert into public.email_outbox (to_user, to_email, kind, subject, body, link) values (p_user, addr, p_kind, p_subject, p_body, p_link);
+end $$;
+revoke execute on function public.queue_email(uuid, text, text, text, text) from public, anon, authenticated;
+
+create or replace function public.mentorship_emails() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if tg_op = 'INSERT' then
+    if coalesce((select email_mentorship from public.alert_prefs where user_id = new.mentor_id), true) then
+      perform public.queue_email(new.mentor_id, 'mentor_request', 'New mentorship request: ' || new.topic,
+        new.mentee_name || ' would like your help with ' || lower(new.topic) || E'.\n\n' || new.message, 'portal/#mentorship');
+    end if;
+  elsif new.status is distinct from old.status and new.status in ('accepted','declined') then
+    if coalesce((select email_mentorship from public.alert_prefs where user_id = new.mentee_id), true) then
+      perform public.queue_email(new.mentee_id, 'mentor_reply', 'Your mentorship request was ' || new.status,
+        'Your request for help with ' || lower(new.topic) || ' was ' || new.status || '.' || coalesce(E'\n\nNote from your mentor: ' || new.mentor_note, ''), 'portal/#mentorship');
+    end if;
+  end if;
+  return null;
+end $$;
+drop trigger if exists mentorship_emails on public.mentorship_requests;
+create trigger mentorship_emails after insert or update of status on public.mentorship_requests for each row execute function public.mentorship_emails();
+
+-- Job alerts: when a listing is published, members whose alert matches get an email
+create or replace function public.job_alert_emails() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare p record;
+begin
+  if not new.published or (tg_op = 'UPDATE' and old.published) then return null; end if;
+  for p in select * from public.alert_prefs a where a.email_jobs
+      and (cardinality(a.job_kinds) = 0 or new.kind = any(a.job_kinds))
+      and (coalesce(trim(a.job_keywords), '') = '' or exists (
+        select 1 from unnest(string_to_array(lower(a.job_keywords), ',')) k
+        where trim(k) <> '' and lower(coalesce(new.title, '') || ' ' || coalesce(new.organisation, '') || ' ' || coalesce(new.location, '') || ' ' || coalesce(new.description, '')) like '%' || trim(k) || '%')) loop
+    perform public.queue_email(p.user_id, 'job_alert', 'New ' || lower(new.kind) || ': ' || new.title,
+      new.title || coalesce(E'\n' || new.organisation, '') || coalesce(' · ' || new.location, '') || coalesce(E'\nApply by ' || to_char(new.deadline, 'DD Mon YYYY'), ''), 'opportunities.html');
+  end loop;
+  return null;
+end $$;
+drop trigger if exists job_alert_emails on public.opportunities;
+create trigger job_alert_emails after insert or update of published on public.opportunities for each row execute function public.job_alert_emails();
+revoke execute on function public.mentorship_emails() from public, anon, authenticated;
+revoke execute on function public.job_alert_emails() from public, anon, authenticated;
+
+-- ---------------------------------------------------------------- Online payments (Razorpay), switched on once ROAR has an account
+-- Rows are created and updated only by the payment functions (supabase/functions/razorpay-*), never by the website.
+create table if not exists public.payments (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  member_id   uuid references public.members(id) on delete set null,
+  purpose     text not null default 'membership',
+  plan        text,
+  amount_paise int not null check (amount_paise > 0),
+  currency    text not null default 'INR',
+  order_id    text unique,
+  payment_id  text,
+  status      text not null default 'created' check (status in ('created','paid','failed')),
+  created_at  timestamptz not null default now(),
+  paid_at     timestamptz
+);
+alter table public.payments enable row level security;
+drop policy if exists payments_read on public.payments;
+create policy payments_read on public.payments for select to authenticated using (user_id = auth.uid() or public.is_founder());
+
+-- Members guard, with the exception for confirmed online payments (see record_online_payment below)
+create or replace function public.protect_member_fields() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if current_setting('roar.trusted', true) = '1' then return new; end if;   -- set only by record_online_payment()
+  if public.is_founder() then
+    if tg_op = 'UPDATE' and new.status = 'approved' and old.status is distinct from 'approved' then
+      new.approved_at := coalesce(new.approved_at, now());
+      new.reviewed_by := public.my_email();
+      if new.member_no is null then new.member_no := 'ROAR-' || lpad(nextval('public.member_no_seq')::text, 4, '0'); end if;
+    end if;
+    if new.status = 'rejected' and coalesce(trim(new.rejection_reason), '') = '' then
+      raise exception 'A refusal must give reasons (Article 10)';
+    end if;
+    if new.plan = 'founding' and (select count(*) from public.members where plan = 'founding' and id <> new.id) >= 20 then
+      raise exception 'All 20 Founding Member places are taken';
+    end if;
+    return new;
+  end if;
+
+  if tg_op = 'INSERT' then
+    new.user_id := auth.uid();
+    new.email := public.my_email();
+    new.status := 'submitted'; new.category := null; new.member_no := null; new.approved_at := null;
+    new.reviewed_by := null; new.rejection_reason := null; new.paid_until := null; new.payment_ref := null;
+    new.fee_deferred := false; new.clock_pause_months := 0; new.notes := null;
+    if new.plan = 'founding' and (select count(*) from public.members where plan = 'founding') >= 20 then
+      new.plan := 'lifetime';
+    end if;
+    return new;
+  end if;
+
+  -- UPDATE by the member themself
+  new.user_id := old.user_id; new.email := old.email; new.category := old.category; new.member_no := old.member_no;
+  new.approved_at := old.approved_at; new.reviewed_by := old.reviewed_by; new.paid_until := old.paid_until;
+  new.payment_ref := old.payment_ref; new.fee_deferred := old.fee_deferred; new.clock_pause_months := old.clock_pause_months;
+  new.notes := old.notes; new.rejection_reason := old.rejection_reason;
+  if old.status = 'approved' then
+    -- training dates and plan are locked once verified
+    new.pg_start := old.pg_start; new.pg_completion := old.pg_completion; new.plan := old.plan;
+    new.id_card_path := old.id_card_path; new.proof_path := old.proof_path; new.applying_as := old.applying_as;
+    new.status := old.status;
+  elsif old.status = 'rejected' and new.status = 'submitted' then
+    null; -- resubmitting or appealing is allowed
+  else
+    new.status := old.status;
+  end if;
+  if new.plan = 'founding' and old.plan <> 'founding' then new.plan := old.plan; end if;
+  return new;
+end $$;
+
+-- Online payments are recorded by the payment function only (it runs with the service key, never from the website).
+-- The members guard trusts a change only when record_online_payment() has set the flag for that one transaction.
+create or replace function public.record_online_payment(p_order text, p_payment text) returns void
+language plpgsql security definer set search_path = public as $$
+declare pay public.payments; m public.members; fy date;
+begin
+  select * into pay from public.payments where order_id = p_order for update;
+  if pay.id is null then raise exception 'Unknown order'; end if;
+  if pay.status = 'paid' then return; end if;
+  update public.payments set status = 'paid', payment_id = p_payment, paid_at = now() where id = pay.id;
+  select * into m from public.members where id = pay.member_id;
+  if m.id is null then return; end if;
+  fy := make_date(extract(year from (now() at time zone 'Asia/Kolkata'))::int + case when extract(month from (now() at time zone 'Asia/Kolkata')) >= 4 then 1 else 0 end, 3, 31);
+  perform set_config('roar.trusted', '1', true);
+  update public.members set payment_ref = 'Razorpay ' || p_payment,
+    paid_until = case when m.plan = 'annual' then greatest(coalesce(m.paid_until, fy), fy) else m.paid_until end
+    where id = m.id;
+  perform set_config('roar.trusted', '', true);
+end $$;
+revoke execute on function public.record_online_payment(text, text) from public, anon, authenticated;
+grant execute on function public.record_online_payment(text, text) to service_role;

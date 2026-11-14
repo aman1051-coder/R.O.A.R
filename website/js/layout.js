@@ -3,33 +3,48 @@
 // Each page has <body data-page="..."> plus empty #site-header and #site-footer placeholders.
 (function () {
   // Top-level menu items. Each item links to its page; "items" become its dropdown.
+  const page = document.body.dataset.page || '';
+  // Seven areas, like the big professional bodies (ESTRO, ASTRO, RCR). "pages" lists the pages that light the item up.
   const NAV = [
-    { key: 'about', label: 'About', href: 'about.html', items: [
-      ['Overview', 'about.html', 'Who we are and what we stand for'],
-      ['Vision & mission', 'about.html#vision', 'What ROAR is working towards'],
+    { key: 'about', label: 'About', href: 'about.html', pages: ['about', 'news', 'contact'], items: [
+      ['Who we are', 'about.html', 'Our vision, mission and principles'],
       ['Governance', 'about.html#governance', 'How ROAR is run and decisions are made'],
       ['Leadership', 'about.html#leadership', "The Founders' Council and first cabinet"],
       ['Partnerships', 'about.html#partners', 'Working with national and international societies'],
-      ['Principles', 'about.html#principles', 'Independence, transparency and accountability'],
-      ['National survey', 'survey/', 'The anonymous national survey of radiation oncologists'],
+      ['News', 'news.html', 'Announcements and updates'],
+      ['Contact', 'contact.html', 'Questions, partnerships and media'],
     ] },
-    { key: 'membership', label: 'Membership', href: 'membership.html', items: [
-      ['Who can join', 'membership.html#categories', 'Membership categories and voting'],
-      ['Your voting window', 'membership.html#calc', 'Check when you can vote'],
-      ['How to join', 'membership.html#join-steps', 'Four steps, all online'],
+    { key: 'membership', label: 'Membership', href: 'membership.html', pages: ['membership', 'portal'], items: [
+      ['Why join', 'membership.html', 'What membership gives you'],
+      ['Who can join', 'membership.html#categories', 'Categories, voting and your voting window'],
       ['Fees', 'membership.html#fees', 'Annual, lifetime and founding membership'],
+      ['How to join', 'membership.html#join-steps', 'Four steps, all online'],
       ['FAQ', 'membership.html#faq', 'Common questions about membership'],
-      ['Member portal', 'portal/', 'Apply, sign in, vote in ballots'],
+      ['My ROAR', 'portal/', 'Your dashboard, card, ballots and settings'],
     ] },
-    { key: 'events', label: 'Events', href: 'events.html' },
-    // Area pages: ROAR's vision for everyone; signed-in members also see the live content there
-    { key: 'community', label: 'Community', href: 'community.html' },
-    { key: 'learn', label: 'Education', href: 'learn.html' },
-    { key: 'opportunities', label: 'Careers', href: 'opportunities.html' },
-    { key: 'desks', label: 'Welfare', href: 'desks.html' },
-    { key: 'news', label: 'News', href: 'news.html' },
+    { key: 'learn', label: 'Education', href: 'learn.html', pages: ['learn', 'events', 'certificate'], items: [
+      ['Programmes', 'learn.html', 'Contour Club, Passport, members\' sessions'],
+      ['Events calendar', 'events.html', 'Conferences, courses, webinars and deadlines'],
+      ['Learning library', 'portal/#learning', 'Guidelines, atlases and exam preparation'],
+      ['CME and certificates', 'portal/#learning', 'Check in to sessions and keep your CME log'],
+      ['Check a certificate', 'certificate.html', 'Confirm that a ROAR certificate is genuine'],
+    ] },
+    { key: 'opportunities', label: 'Careers', href: 'opportunities.html', pages: ['opportunities', 'mentorship'], items: [
+      ['Jobs and fellowships', 'opportunities.html', 'Posts, fellowships and observerships'],
+      ['Mentorship', 'mentorship.html', 'One-to-one help from experienced colleagues'],
+      ['Career help', 'portal/#careers', 'CV review, fellowship and contract advice'],
+      ['Job alerts', 'portal/#settings', 'An email when a matching opening is posted'],
+    ] },
+    { key: 'desks', label: 'Welfare', href: 'desks.html', pages: ['desks', 'survey'], items: [
+      ['Member Welfare Charter', 'desks.html', 'Our promise to every member'],
+      ['Support desks', 'desks.html#members', 'Confidential help with training and work'],
+      ['National survey', 'survey/', 'The anonymous national survey'],
+      ['Need help now?', 'desks.html', 'Tele-MANAS 14416, free and 24-hour'],
+    ] },
+    { key: 'research', label: 'Research', href: 'research.html', pages: ['research'] },
+    { key: 'community', label: 'Community', href: 'community.html', pages: ['community'] },
   ];
-  const page = document.body.dataset.page || '';
+  const isCur = n => (n.pages || [n.key]).includes(page);
   const root = document.body.dataset.root || '';   // '../' for pages inside a subfolder, e.g. /portal/
 
   // Background canvas and the liquid-glass refraction filter
@@ -57,19 +72,19 @@
       <div class="bar">
         <a class="brand" href="${root}index.html" aria-label="${FULL_NAME}, home" title="Rising Oncologists' Alliance in Radiation Oncology">${LOGO}</a>
         <nav class="quick-links" aria-label="Sections">
-          ${NAV.map(n => `<a href="${root}${n.href}"${n.key === page ? ' aria-current="page" class="active"' : ''}>${n.label}${n.members ? '<svg class="nav-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>' : ''}</a>`).join('')}
+          ${NAV.map(n => `<a href="${root}${n.href}"${isCur(n) ? ' aria-current="page" class="active"' : ''}>${n.label}${n.members ? '<svg class="nav-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>' : ''}</a>`).join('')}
         </nav>
         <nav class="nav" id="nav" aria-label="Main">
           ${NAV.map((n, i) => !n.items
-            ? `<a href="${root}${n.href}"${n.key === page ? ' aria-current="page" class="active"' : ''}${n.members ? ' title="For members: sign in to use"' : ''}>${n.label}${n.members ? '<svg class="nav-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span class="sr-only"> (members)</span>' : ''}</a>`
-            : `<div class="nav-group${n.key === page ? ' current' : ''}">
-                <a href="${root}${n.href}" class="nav-top${n.key === page ? ' active' : ''}"${n.key === page ? ' aria-current="page"' : ''}>${n.label}</a>
+            ? `<a href="${root}${n.href}"${isCur(n) ? ' aria-current="page" class="active"' : ''}${n.members ? ' title="For members: sign in to use"' : ''}>${n.label}${n.members ? '<svg class="nav-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span class="sr-only"> (members)</span>' : ''}</a>`
+            : `<div class="nav-group${isCur(n) ? ' current' : ''}">
+                <a href="${root}${n.href}" class="nav-top${isCur(n) ? ' active' : ''}"${isCur(n) ? ' aria-current="page"' : ''}>${n.label}</a>
                 <button class="nav-caret" type="button" aria-expanded="false" aria-controls="dd-${i}" aria-label="Show ${n.label} pages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
                 <div class="dropdown" id="dd-${i}" role="group" aria-label="${n.label}">
                   ${n.items.map(([t, h, d]) => `<a href="${root}${h}"><b>${t}</b><span>${d}</span></a>`).join('')}
                 </div>
               </div>`).join('')}
-          <a href="${root}portal/" data-guest${page === 'portal' ? ' aria-current="page" class="active"' : ''}>Member login</a>
+          <a href="${root}portal/" data-guest>Sign in</a>
           <a class="btn btn-primary" href="${root}membership.html" data-guest>Join</a>
         </nav>
         <div class="header-tools">
@@ -94,28 +109,29 @@
         <div>
           <h3>ROAR</h3>
           <ul>
-            <li><a href="${root}about.html">About &amp; governance</a></li>
-            <li><a href="${root}index.html#charter">Member Welfare Charter</a></li>
-            <li><a href="${root}membership.html">Membership</a></li>
+            <li><a href="${root}about.html">Who we are</a></li>
+            <li><a href="${root}about.html#governance">Governance &amp; leadership</a></li>
+            <li><a href="${root}research.html">Research Collective</a></li>
             <li><a href="${root}news.html">News</a></li>
             <li><a href="${root}survey/">National survey</a></li>
           </ul>
         </div>
         <div>
-          <h3>For members</h3>
+          <h3>Members</h3>
           <ul>
-            <li><a href="${root}events.html">Events calendar</a></li>
-            <li><a href="${root}opportunities.html">Careers &amp; fellowships</a></li>
+            <li><a href="${root}membership.html">Membership</a></li>
+            <li><a href="${root}portal/">My ROAR</a></li>
+            <li><a href="${root}learn.html">Education &amp; events</a></li>
+            <li><a href="${root}opportunities.html">Careers</a> &amp; <a href="${root}mentorship.html">mentorship</a></li>
+            <li><a href="${root}desks.html">Welfare</a></li>
             <li><a href="${root}community.html">ROAR Community</a></li>
-            <li><a href="${root}learn.html">Learning library</a></li>
-            <li><a href="${root}desks.html">Member welfare</a></li>
-            <li><a href="${root}portal/">Member login</a></li>
           </ul>
         </div>
         <div>
           <h3>Contact</h3>
           <ul>
             <li><a href="${root}contact.html">Contact &amp; FAQ</a></li>
+            <li><a href="${root}certificate.html">Check a certificate</a></li>
             <!-- TODO: replace with ROAR's social links once created -->
             <li><a href="#" data-todo>Instagram</a></li>
             <li><a href="#" data-todo>LinkedIn</a></li>

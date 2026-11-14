@@ -37,6 +37,7 @@
         posts: () => get(sb.from('posts').select('id, kind, topic, title, body, image_paths, created_at, author:profiles!posts_author_id_fkey(username, display_name), likes:post_likes(count), ncomments:comments!comments_post_id_fkey(count)').order('created_at', { ascending: false }).limit(6)),
         trending: async () => { const { data: t } = await sb.rpc('community_trending', { p_days: 14 }); return t || []; },
         hasProfile: async () => !!(await get(sb.from('profiles').select('id').eq('id', uid))).length,
+        mentors: () => get(sb.from('mentors').select('display_name, headline, areas, offers, institution, city').eq('status', 'approved').order('updated_at', { ascending: false }).limit(6)),
       };
     }
     // Demo: the data the console and portal demos keep in this browser
@@ -55,6 +56,7 @@
         author: profile(p.author_id), likes: [{ count: (c.likes || []).filter(l => l.post_id === p.id).length }], ncomments: [{ count: (c.comments || []).filter(x => x.post_id === p.id).length }] })),
       trending: async () => { const n = {}; (c.posts || []).forEach(p => (p.hashtags || []).forEach(t => { n[t] = (n[t] || 0) + 1; })); return Object.entries(n).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([tag, k]) => ({ tag, n: k })); },
       hasProfile: async () => !!profile(me.email),
+      mentors: async () => (s.mentors || []).filter(m => m.status === 'approved').slice(0, 6),
     };
   }
 
@@ -106,7 +108,7 @@
             </article>`).join('') : empty('No sessions scheduled yet. The Academic Society will post them here.')}
             <a class="mz-more" href="events.html">Full calendar →</a></div>
         </div>
-      </div>`, 'portal/#education', "Open members' area");
+      </div>`, 'portal/#learning', "Open members' area");
     const list = zone.querySelector('[data-list]'), q = zone.querySelector('.mz-q'), k = zone.querySelector('.mz-k');
     const draw = () => {
       const term = (q.value || '').toLowerCase(), kind = k ? k.value : '';
@@ -115,7 +117,7 @@
       list.innerHTML = rows.length ? rows.slice(0, 12).map(r => `<article class="mz-item">
           <div><div class="meta-row">${r.kind ? tag(r.kind) : ''}${r.level ? tag(r.level, true) : ''}${r.members_only ? '<span class="tag tag-roar">Members</span>' : ''}</div>
           <h4>${safeUrl(r.url) ? `<a href="${safeUrl(r.url)}" target="_blank" rel="noopener">${esc(r.title)} ↗</a>` : esc(r.title)}</h4>${r.description ? `<p class="mz-sub">${esc(r.description)}</p>` : ''}</div></article>`).join('')
-        + (rows.length > 12 ? `<a class="mz-more" href="portal/#education">See all ${rows.length} →</a>` : '')
+        + (rows.length > 12 ? `<a class="mz-more" href="portal/#learning">See all ${rows.length} →</a>` : '')
         : empty(res.length ? 'Nothing matches that search.' : 'The Academic Society is preparing the first resources.');
     };
     q.addEventListener('input', draw); if (k) k.addEventListener('change', draw); draw();
@@ -202,12 +204,23 @@
       </div>`, 'portal/#community', 'Open Community');
   }
 
+  async function mentorship(src) {
+    const ms = await src.mentors();
+    zone.querySelector('.wrap').innerHTML = shell('Mentors you can ask', `
+      <div class="mz-mentors">${ms.length ? ms.map(m => `<article class="mz-mentor">
+          <b>${esc(m.display_name)}</b><span class="mz-sub">${esc(m.headline || '')}</span>
+          <span class="mz-sub">${[m.institution, m.city].filter(Boolean).map(esc).join(' · ')}</span>
+          <div class="mz-chips">${(m.offers || []).slice(0, 3).map(o => tag(o, true)).join('')}</div>
+        </article>`).join('') : empty("The first mentors are being approved by the Founders' Council.")}</div>
+      <div class="mz-cta"><a class="btn btn-primary" href="portal/#mentorship">Find a mentor</a><a class="btn btn-glass" href="portal/#mentorship">Offer to mentor</a></div>`, 'portal/#mentorship', 'Mentorship in My ROAR');
+  }
+
   async function start() {
     let src;
     try { src = await source(); } catch (e) { console.warn(e); return; }
     if (!src) return;                                  // visitors keep the invitation
     zone.classList.add('is-member');
-    try { await ({ education, careers, welfare, community }[AREA])(src); }
+    try { await ({ education, careers, welfare, community, mentorship }[AREA])(src); }
     catch (e) { console.warn('Members content unavailable', e); }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else setTimeout(start, 0);

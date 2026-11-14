@@ -117,6 +117,78 @@ The logo files are in `website/assets/logo/`:
 
 The O is a linac gantry, with five weighted treatment beams converging on the isocentre. To change the shapes, edit and run `tools/make_logo.py`.
 
+## How the site is organised
+
+Like ESTRO, ASTRO and the Royal College of Radiologists, the public site has seven areas, each with a dropdown:
+- **About:** who we are, governance, leadership, partnerships, news and contact.
+- **Membership:** why join, who can join, fees, how to join, the FAQ and My ROAR.
+- **Education:** programmes, the events calendar, the learning library, CME and certificates, and checking a certificate.
+- **Careers:** jobs and fellowships, mentorship, career help and job alerts.
+- **Welfare:** the Member Welfare Charter, support desks and the national survey.
+- **Research:** the Research Collective and its open projects.
+- **Community.**
+
+The menu lives in `website/js/layout.js` (the `NAV` list).
+
+## My ROAR (the members' hub)
+
+Signing in at `/portal/` opens My ROAR, with these tabs:
+- **Home:** a dashboard showing membership, CME hours this year, mentorship, Community, upcoming events, new openings and quick actions.
+- **Membership:** the application, card and ballots.
+- **Community.**
+- **Learning:** check in to sessions, certificates, the CME log and the learning library.
+- **Careers.**
+- **Mentorship.**
+- **Welfare.**
+- **Settings:** email notifications, job alerts and password.
+
+Founders see a link to the console on Home.
+
+## Mentorship
+
+1. Members offer to mentor in My ROAR → Mentorship. They choose the areas they cover, what they help with and how many mentees they take.
+2. A founder approves each mentor on the console's **Mentors** page before they are listed. Mentors can pause themselves at any time.
+3. Members browse mentors and send a request. Up to 3 requests can wait for an answer at a time.
+4. When the mentor accepts, both see each other's email address.
+
+## CME and certificates
+
+1. On the console's **Sessions & CME** page, give a ROAR session its CME hours and a check-in code.
+2. Show the code at the end of the session.
+3. Members enter the code in My ROAR → Learning and get a numbered certificate (for example `ROAR-2026-1A2B3C4D`).
+4. The member can print the certificate or save it as a PDF. Anyone can check it is genuine at `/certificate.html`; the check shows the name, session and date, but no account details.
+5. Close check-in when you're done. If someone couldn't check in, record their attendance by their email address.
+
+Members can also log other learning (conferences, courses, webinars) in their CME log and download it as a CSV.
+
+## Research Collective
+
+Add projects on the console's **Research projects** page. Published projects appear on `/research.html`, where signed-in members can express interest; the console lists who is interested in each project.
+
+## Email notifications (switch on when ready)
+
+Job alerts and mentorship emails are already **queued** in the database (console → **Email outbox**). Members choose what they receive in My ROAR → Settings. Nothing is sent until ROAR connects an email service:
+1. Create an account with [Resend](https://resend.com) (free for low volumes), verify ROAR's domain, and create an API key.
+2. In Supabase, go to **Edge Functions → Secrets** and add:
+   - `RESEND_API_KEY`;
+   - `EMAIL_FROM`, for example `ROAR <hello@roarindia.org>`;
+   - `SITE_URL`.
+3. Deploy the function in `supabase/functions/send-email/` (Edge Functions → Deploy a new function → paste the file).
+4. Schedule it to run every 10 minutes (Integrations → Cron).
+
+Founders' sign-in addresses (`@founders.roar.invalid`) can't receive email, so founders get on-site notifications only.
+
+## Online fee payment (switch on when ROAR has a bank account)
+
+Members can pay their fee by UPI, card or net banking through Razorpay. This needs a Razorpay account, which needs ROAR's registration and bank account first. Until it is switched on, members see the Treasurer's manual payment instructions.
+1. Create a Razorpay account and complete its KYC.
+2. In Supabase, go to **Edge Functions → Secrets** and add `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET`.
+3. Deploy `supabase/functions/razorpay-order/` and `supabase/functions/razorpay-webhook/`. Turn off "verify JWT" for the webhook.
+4. In Razorpay, go to **Settings → Webhooks** and add the webhook function's address, with the event `payment.captured` and the same secret.
+5. Put the public Key ID in `website/js/config.js` as `payments: { razorpayKeyId: 'rzp_live_…' }`.
+
+The fee is always worked out on the server from the member's plan: annual ₹500, lifetime ₹5,000, founding ₹1,000. Once a payment is confirmed, the member's payment reference is recorded, and annual members are marked paid until 31 March.
+
 ## Education, Careers, Welfare and Community pages
 
 These four public pages show ROAR's vision to everyone. When a member is signed in, the same page also shows the live content in a members' panel near the top (`js/members-area.js`):
@@ -171,7 +243,7 @@ A members-only social space in the portal (`/portal/#community`) that brings tog
   - delete posts, comments and stories.
 
   Reports arrive in the console's **Community** page, and reporters' names are visible only to the Founders' Council.
-- **Setting it up:** run schema PARTs 11, 12 and 13. If the rest of the schema is already in place, paste and run only those parts (from the PART 11 heading to the end of the file).
+- **Setting it up:** run schema PARTs 11 to 15. If the rest of the schema is already in place, paste and run only the parts you haven't run yet.
 
 ## Running a ballot
 

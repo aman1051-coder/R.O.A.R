@@ -937,3 +937,11 @@ html:has(.subnav) { scroll-padding-top: 160px; }
   .gate-actions .btn { flex: 1 1 auto; justify-content: center; text-align: center; }
 }
 @media (max-width: 760px) { .footer-base a, .page .back, a.back { display: inline-block; padding: 10px 2px; } }
+
+.mz-mentors { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.mz-mentor { display: grid; gap: 4px; align-content: start; padding: 16px; border-radius: 16px; background: rgba(var(--fg), .04); border: 1px solid rgba(var(--fg), .1); }
+.mz-mentor b { color: var(--text); }
+.mz-mentor .mz-chips { margin-top: 6px; }
+.research-list { display: grid; gap: 16px; }
+.research-item h3 { margin: 10px 0 6px; }
+.research-item .research-form { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(var(--fg), .1); }

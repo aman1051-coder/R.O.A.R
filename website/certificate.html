@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Certificate check – ROAR</title>
+  <meta name="description" content="Check that a ROAR certificate of attendance is genuine.">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#15233f">
+  <meta name="apple-mobile-web-app-title" content="ROAR">
+  <meta property="og:image" content="https://aman1051-coder.github.io/R.O.A.R/assets/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="js/theme.js"></script>
+  <style>
+    .cert-wrap { max-width: 980px; margin: 0 auto; }
+    .verify { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 20px; }
+    .verify input { flex: 1 1 240px; text-transform: uppercase; }
+    .verdict { padding: 14px 18px; border-radius: 16px; margin-bottom: 18px; font-weight: 600; }
+    .verdict.ok { background: rgba(63,185,111,.12); border: 1px solid rgba(63,185,111,.45); color: #2f9a5b; }
+    .verdict.bad { background: rgba(229,72,77,.1); border: 1px solid rgba(229,72,77,.4); color: #d4373c; }
+    /* The certificate itself: always light, A4 landscape when printed */
+    .cert { position: relative; aspect-ratio: 297 / 210; background: #fffdf9; color: #15233f; border-radius: 6px; overflow: hidden;
+      box-shadow: 0 30px 80px rgba(0,0,0,.25); padding: 6% 7%; display: grid; grid-template-rows: auto 1fr auto; text-align: center; font-family: "Inter", sans-serif; }
+    .cert::before { content: ""; position: absolute; inset: 14px; border: 2px solid #15233f; border-radius: 4px; pointer-events: none; }
+    .cert::after { content: ""; position: absolute; inset: 20px; border: 1px solid #e8792b; border-radius: 2px; pointer-events: none; }
+    .cert-logo { display: flex; justify-content: center; }
+    .cert-logo .brand-full, .cert-logo a { display: block; width: min(300px, 40%); color: #15233f !important; pointer-events: none; }
+    .cert-logo svg { width: 100% !important; height: auto; display: block; color: #15233f; }
+    @media screen and (max-width: 700px) { .cert { aspect-ratio: auto; padding: 40px 28px 30px; gap: 22px; } .cert-logo .brand-full, .cert-logo a { width: 58%; } .cert-foot { flex-direction: column; align-items: stretch; text-align: center; } .cert-no { text-align: center; } }
+    .cert-body { display: grid; align-content: center; gap: .6em; }
+    .cert-kicker { font-size: clamp(.6rem, 1.4vw, .85rem); letter-spacing: .3em; text-transform: uppercase; color: #b4500d; font-weight: 600; }
+    .cert-name { font-family: "Fraunces", serif; font-weight: 700; font-size: clamp(1.4rem, 4.6vw, 3rem); margin: .1em 0; color: #15233f; }
+    .cert-text { font-size: clamp(.7rem, 1.6vw, 1.05rem); color: #34445a; margin: 0; }
+    .cert-event { font-family: "Fraunces", serif; font-weight: 600; font-size: clamp(.9rem, 2.4vw, 1.6rem); color: #15233f; margin: 0; }
+    .cert-foot { display: flex; justify-content: space-between; align-items: end; gap: 12px; font-size: clamp(.55rem, 1.2vw, .8rem); color: #34445a; text-align: left; }
+    .cert-sign { border-top: 1px solid #15233f; padding-top: 6px; min-width: 30%; }
+    .cert-no { text-align: right; }
+    .cert-no b { font-family: ui-monospace, Consolas, monospace; letter-spacing: .04em; }
+    .cert-actions { display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+    @media print {
+      @page { size: A4 landscape; margin: 0; }
+      body > *:not(main), .page-hero, .verify, .verdict, .cert-actions, #bg-shader, .to-top { display: none !important; }
+      body { background: #fff !important; }
+      main, section, .wrap, .cert-wrap { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+      .cert { box-shadow: none; border-radius: 0; width: 297mm; height: 210mm; aspect-ratio: auto; }
+    }
+  </style>
+</head>
+<body data-page="certificate">
+<div id="site-header"></div>
+<main id="main">
+<section class="page-hero">
+  <div class="wrap">
+    <span class="eyebrow">Certificates</span>
+    <h1>Check a <span class="glow">ROAR certificate.</span></h1>
+    <p class="lead">Every certificate of attendance for a ROAR session has a unique number. Enter it to confirm that the certificate is genuine.</p>
+  </div>
+</section>
+<section class="section-tight">
+  <div class="wrap cert-wrap">
+    <form class="verify form" id="verify" novalidate>
+      <div style="flex:1 1 260px"><label for="no">Certificate number</label><input id="no" placeholder="ROAR-2026-XXXXXXXX" autocomplete="off" spellcheck="false" maxlength="40"></div>
+      <button class="btn btn-primary" type="submit">Check</button>
+    </form>
+    <div id="result" aria-live="polite"></div>
+  </div>
+</section>
+</main>
+<div id="site-footer"></div>
+<script src="js/layout.js"></script>
+<script src="shader.js"></script>
+<script src="main.js"></script>
+<script src="js/config.js"></script>
+<script>
+(() => {
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fmt = v => v ? new Date(String(v).length === 10 ? v + 'T00:00:00+05:30' : v).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' }) : '';
+  const box = document.getElementById('result'), input = document.getElementById('no');
+  async function lookup(no) {
+    const cfg = window.ROAR_CONFIG || {};
+    if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
+      const r = await fetch(cfg.supabaseUrl + '/rest/v1/rpc/verify_certificate', { method: 'POST', headers: { apikey: cfg.supabaseAnonKey, Authorization: 'Bearer ' + cfg.supabaseAnonKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_no: no }) });
+      return r.ok ? r.json() : null;
+    }
+    const s = JSON.parse(localStorage.getItem('roar-council-demo-v3') || 'null') || {};
+    const a = (s.attendance || []).find(x => x.certificate_no === no.toUpperCase());
+    const e = a && (s.events || []).find(x => x.id === a.event_id);
+    return a && e ? { certificate_no: a.certificate_no, name: a.name_on_certificate, event: e.title, kind: e.kind, starts_on: e.starts_on, ends_on: e.ends_on, format: e.format, cme_hours: e.cme_hours, issued: a.created_at } : null;
+  }
+  async function show(no) {
+    no = String(no || '').trim().toUpperCase();
+    if (!no) { box.innerHTML = ''; return; }
+    box.innerHTML = '<p class="muted">Checking…</p>';
+    let c = null;
+    try { c = await lookup(no); } catch (e) { }
+    if (!c) { box.innerHTML = `<div class="verdict bad">No ROAR certificate has the number ${esc(no)}. Check the number and try again.</div>`; return; }
+    const range = c.ends_on && c.ends_on !== c.starts_on ? `${fmt(c.starts_on)} – ${fmt(c.ends_on)}` : fmt(c.starts_on);
+    const logo = (document.querySelector('.site-footer .brand-full') || {}).innerHTML || '<b>ROAR</b>';
+    box.innerHTML = `<div class="verdict ok">✓ Genuine. This certificate was issued by ROAR on ${fmt(c.issued)}.</div>
+      <article class="cert" aria-label="Certificate of attendance">
+        <div class="cert-logo">${logo}</div>
+        <div class="cert-body">
+          <div class="cert-kicker">Certificate of attendance</div>
+          <p class="cert-text">This is to certify that</p>
+          <div class="cert-name">${esc(c.name)}</div>
+          <p class="cert-text">attended the ROAR ${esc(String(c.kind || 'session').toLowerCase())}</p>
+          <p class="cert-event">${esc(c.event)}</p>
+          <p class="cert-text">${range}${c.format ? ' · ' + esc(c.format) : ''}${c.cme_hours ? ` · ${esc(c.cme_hours)} CME hour${+c.cme_hours === 1 ? '' : 's'}` : ''}</p>
+        </div>
+        <div class="cert-foot">
+          <div class="cert-sign">Founders' Council<br>Rising Oncologists' Alliance in Radiation Oncology</div>
+          <div class="cert-no">Certificate <b>${esc(c.certificate_no)}</b><br>Check at ${esc(location.host + location.pathname)}</div>
+        </div>
+      </article>
+      <div class="cert-actions"><button class="btn btn-primary" onclick="window.print()">Print or save as PDF</button><button class="btn btn-glass" id="copy">Copy link</button></div>`;
+    document.getElementById('copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(location.href); document.getElementById('copy').textContent = 'Link copied'; } catch (e) { } });
+  }
+  document.getElementById('verify').addEventListener('submit', e => {
+    e.preventDefault();
+    const no = input.value.trim().toUpperCase();
+    history.replaceState(null, '', '?no=' + encodeURIComponent(no));
+    show(no);
+  });
+  const start = () => { const no = new URLSearchParams(location.search).get('no'); if (no) { input.value = no; show(no); } };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else setTimeout(start, 0);
+})();
+</script>
+</body>
+</html>

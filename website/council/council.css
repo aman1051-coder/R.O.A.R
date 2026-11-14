@@ -297,3 +297,8 @@ table.data.mx tbody tr { cursor: default; }
 /* Founders' photos in the Founders table */
 .avatar.xs { flex: 0 0 30px; width: 30px; height: 30px; font-size: .7rem; }
 .fc-name { display: inline-flex; align-items: center; gap: 10px; }
+
+.att-list { margin-top: 12px; padding: 12px; border-radius: 14px; background: rgba(var(--fg),.04); }
+.att-row { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1.2fr); gap: 12px; align-items: center; padding: 8px 4px; border-top: 1px solid rgba(var(--fg),.08); font-size: .9rem; }
+.att-row:first-child { border-top: 0; }
+@media (max-width: 640px) { .att-row { grid-template-columns: 1fr; gap: 2px; } }
