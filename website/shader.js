@@ -115,11 +115,16 @@
   // Re-render when the theme changes (also needed when motion is reduced and nothing animates)
   new MutationObserver(() => {
     lightTarget = isLight();
-    if (reduceMotion) { light = lightTarget; requestAnimationFrame(frame); }
+    if (still) { light = lightTarget; requestAnimationFrame(frame); }
   }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
   // Render below native resolution: the field is soft, so this is invisible and cheap.
-  const SCALE = 0.5;
+  // Phones and tablets render at lower resolution and frame rate, and on "save data" the field is still.
+  const coarse = matchMedia('(pointer: coarse)').matches || innerWidth < 760;
+  const saveData = !!(navigator.connection && navigator.connection.saveData);
+  const still = reduceMotion || saveData;
+  const SCALE = coarse ? 0.35 : 0.5;
+  const FRAME_MS = coarse ? 1000 / 24 : 1000 / 30;    // the field drifts slowly; 24-30 fps looks the same and frees the GPU for scrolling
   function resize() {
     const w = Math.max(1, Math.floor(innerWidth * SCALE));
     const h = Math.max(1, Math.floor(innerHeight * SCALE));
@@ -129,8 +134,13 @@
       gl.uniform2f(uRes, w, h);
     }
   }
-  resize();
-  addEventListener('resize', resize);
+  // Page height is measured on resize and scroll, never inside the animation frame (that forced a layout every frame)
+  let maxScroll = 1, scrollFrac = 0, scrolling = 0;
+  const measure = () => { maxScroll = Math.max(1, document.documentElement.scrollHeight - innerHeight); scrollFrac = Math.min(1, scrollY / maxScroll); };
+  resize(); measure();
+  addEventListener('resize', () => { resize(); measure(); });
+  addEventListener('load', measure);
+  addEventListener('scroll', () => { scrollFrac = Math.min(1, scrollY / maxScroll); scrolling = performance.now(); }, { passive: true });
 
   const target = { x: 0.72, y: 0.62 }, focus = { x: 0.72, y: 0.62 };
   addEventListener('pointermove', e => {
@@ -141,21 +151,25 @@
   let running = true;
   document.addEventListener('visibilitychange', () => {
     running = !document.hidden;
-    if (running && !reduceMotion) requestAnimationFrame(frame);
+    if (running && !still) requestAnimationFrame(frame);
   });
 
   const start = performance.now();
+  let last = -1e9;
   function frame(now) {
-    focus.x += (target.x - focus.x) * 0.03;
-    focus.y += (target.y - focus.y) * 0.03;
-    const max = document.documentElement.scrollHeight - innerHeight;
-    gl.uniform1f(uTime, reduceMotion ? 12.0 : (now - start) / 1000);
+    if (running && !still) requestAnimationFrame(frame);
+    // While the page is being scrolled, draw at most ~6 times a second so scrolling gets the GPU
+    const gap = now - scrolling < 180 ? 160 : FRAME_MS;
+    if (!still && now - last < gap) return;
+    const dt = Math.min(4, (now - last) / 16.7); last = now;
+    focus.x += (target.x - focus.x) * 0.03 * dt;
+    focus.y += (target.y - focus.y) * 0.03 * dt;
+    gl.uniform1f(uTime, still ? 12.0 : (now - start) / 1000);
     gl.uniform2f(uFocus, focus.x, focus.y);
-    gl.uniform1f(uScroll, max > 0 ? scrollY / max : 0);
-    light += (lightTarget - light) * (reduceMotion ? 1 : 0.08);   // smooth cross-fade between themes
+    gl.uniform1f(uScroll, scrollFrac);
+    light += (lightTarget - light) * (still ? 1 : Math.min(1, 0.08 * dt));   // smooth cross-fade between themes
     gl.uniform1f(uLight, light);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
-    if (running && !reduceMotion) requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
   document.documentElement.classList.add('has-shader');

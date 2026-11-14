@@ -235,7 +235,7 @@
   }
 
   // Founders sign in with a username (or their Founder ID, FC-01 … FC-09); an email address also works.
-  const FOUNDER_USERNAMES = cfg.founderUsernames || ['aakash.bellige', 'aman.gupta', 'kratika.bhatia', 'shriya.dhingra', 'deepika.sharma', 'arshida.pulimala', 'arsheya.gupta', 'honey.sharma', 'abhishek.bhadri'];
+  const FOUNDER_USERNAMES = cfg.founderUsernames || ['akash.bellige', 'aman.gupta', 'kratika.bhatia', 'shriya.dhingra', 'deepika.sharma', 'arshida.p', 'arsheya.gupta', 'honey.sharma', 'abhishek.bhadri'];
   function loginEmail(id) {
     if (id.includes('@')) return id;
     const m = id.match(/^fc-?0?([1-9])$/);          // FC-01 -> the first founder's username
@@ -253,6 +253,11 @@
     return [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
   };
   const Auth = {
+    // Username or Founder ID -> the founder's current username (the database knows about renames)
+    async resolve(id) {
+      if (LIVE) { const { data } = await sb.rpc('founder_username', { p_login: id }); if (data) return data; }
+      return toUsername(id);
+    },
     async status(username) {
       if (!LIVE) { const f = founders.find(x => x.username === username); return !f ? 'unknown' : f.password_set ? 'password' : 'choose_password'; }
       const { data, error } = await sb.rpc('founder_login_status', { p_username: username });
@@ -314,9 +319,9 @@
       if (lfStep === 'user') {
         const id = $('#login-email').value.trim().toLowerCase();
         if (!id) return msg(m, 'Enter your username.', 'err');
-        lfUsername = id.includes('@') ? id : toUsername(id);
-        if (id.includes('@')) { msg(m, ''); return lfShow('pass'); }
+        if (id.includes('@')) { lfUsername = id; msg(m, ''); return lfShow('pass'); }
         msg(m, 'Checking…');
+        lfUsername = await Auth.resolve(id);
         const st = await Auth.status(lfUsername);
         if (st === 'unknown') { lfUsername = null; return msg(m, 'That username is not on the Founders\u2019 Council list.', 'err'); }
         msg(m, '');
@@ -1236,7 +1241,7 @@
           <button type="button" class="btn btn-glass small" data-pw-action="reset" data-user="${esc(r.username)}" style="margin-top:8px">Reset: they choose a new one</button>
           <button type="button" class="btn btn-glass small" data-pw-action="set" data-user="${esc(r.username)}" style="margin-top:8px">Set a new password</button></dd></dl>` : '',
         fields: [{ key: 'name', label: 'Name', required: true }, { key: 'founder_id', label: 'Founder ID', hint: 'FC-01 … FC-09' },
-          { key: 'username', label: 'Username (lower case, e.g. aakash.bellige)', required: true },
+          { key: 'username', label: 'Username (lower case, e.g. akash.bellige)', required: true },
           { key: 'cabinet_role', label: 'Cabinet role', full: true }, { key: 'sort', label: 'Order', type: 'number' },
           { key: 'is_admin', label: 'Admin: can edit this list, open applications and surveys', type: 'checkbox' }],
         validate: v => /^[a-z0-9._-]{3,40}$/.test(v.username || '') ? null : 'Usernames use 3–40 lower-case letters, numbers, dots, dashes or underscores.',

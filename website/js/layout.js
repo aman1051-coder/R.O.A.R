@@ -22,11 +22,11 @@
       ['Member portal', 'portal/', 'Apply, sign in, vote in ballots'],
     ] },
     { key: 'events', label: 'Events', href: 'events.html' },
-    // Members' sections: the pages are short previews; the content is in the member portal
-    { key: 'community', label: 'Community', href: 'portal/#community', members: true },
-    { key: 'learn', label: 'Education', href: 'learn.html', members: true },
-    { key: 'opportunities', label: 'Careers', href: 'opportunities.html', members: true },
-    { key: 'desks', label: 'Welfare', href: 'desks.html', members: true },
+    // Area pages: ROAR's vision for everyone; signed-in members also see the live content there
+    { key: 'community', label: 'Community', href: 'community.html' },
+    { key: 'learn', label: 'Education', href: 'learn.html' },
+    { key: 'opportunities', label: 'Careers', href: 'opportunities.html' },
+    { key: 'desks', label: 'Welfare', href: 'desks.html' },
     { key: 'news', label: 'News', href: 'news.html' },
   ];
   const page = document.body.dataset.page || '';
@@ -106,7 +106,7 @@
           <ul>
             <li><a href="${root}events.html">Events calendar</a></li>
             <li><a href="${root}opportunities.html">Careers &amp; fellowships</a></li>
-            <li><a href="${root}portal/#community">ROAR Community</a></li>
+            <li><a href="${root}community.html">ROAR Community</a></li>
             <li><a href="${root}learn.html">Learning library</a></li>
             <li><a href="${root}desks.html">Member welfare</a></li>
             <li><a href="${root}portal/">Member login</a></li>
@@ -236,4 +236,24 @@
 
   // Social links are placeholders until the accounts exist: hide them rather than show dead links
   document.querySelectorAll('[data-todo]').forEach(a => a.parentElement.remove());
+})();
+
+// ---- Back to top (long public pages), and the installable app (service worker)
+(() => {
+  const page = document.body.dataset.page || '';
+  if (!/^(portal|council)$/.test(page)) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'to-top'; b.setAttribute('aria-label', 'Back to top'); b.hidden = true;
+    b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+    b.addEventListener('click', () => window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
+    document.body.appendChild(b);
+    let ticking = false;
+    addEventListener('scroll', () => {
+      if (ticking) return; ticking = true;
+      requestAnimationFrame(() => { b.hidden = scrollY < innerHeight * 1.2; ticking = false; });
+    }, { passive: true });
+  }
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    addEventListener('load', () => navigator.serviceWorker.register((document.body.dataset.root || '') + 'sw.js').catch(() => { }));
+  }
 })();

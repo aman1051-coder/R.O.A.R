@@ -2,12 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Careers – ROAR</title>
-  <meta name="description" content="Senior residency and consultant posts, fellowships, observerships and one-to-one career guidance for ROAR members.">
+  <meta name="description" content="ROAR's vision for careers in radiation oncology: transparent job and fellowship listings, one-to-one guidance and mentorship, and fair contracts for young radiation oncologists.">
   <meta property="og:title" content="Careers – ROAR">
-  <meta property="og:description" content="Senior residency and consultant posts, fellowships, observerships and one-to-one career guidance for ROAR members.">
+  <meta property="og:description" content="ROAR's vision for careers in radiation oncology: transparent job and fellowship listings, one-to-one guidance and mentorship, and fair contracts for young radiation oncologists.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#15233f">
+  <meta name="apple-mobile-web-app-title" content="ROAR">
+  <meta property="og:image" content="https://aman1051-coder.github.io/R.O.A.R/assets/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -20,31 +29,35 @@
 <main id="main">
 <section class="page-hero">
   <div class="wrap">
-    <span class="eyebrow">Careers · for members</span>
+    <span class="eyebrow">Careers</span>
     <h1>Your next post, <span class="glow">fellowship or observership.</span></h1>
-    <p class="lead">Job and fellowship listings, and one-to-one help from founders and mentors, are in the members’ area.</p>
+    <p class="lead">No young radiation oncologist should have to find their way alone. ROAR brings openings into the open and connects every member with someone who has walked the path before.</p>
   </div>
 </section>
-
-<section class="section-tight">
+<section class="section-tight members-zone" id="members" data-members-zone="careers" aria-live="polite">
   <div class="wrap">
-    <div class="cta-band glass gate-band">
-      <div class="gate-lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+    <div class="cta-band glass mz-guest">
       <div>
-        <h2>Sign in to the members' area</h2>
-        <p>Careers is part of the members' area. Creating an account is free for radiation oncology residents and radiation oncologists in India.</p>
+        <span class="eyebrow">Members' area</span>
+        <h2>Open positions and one-to-one help</h2>
+        <p>Members see current job, fellowship and observership listings here, and can ask founders and mentors for help with a CV, a fellowship or a contract.</p>
       </div>
       <div class="gate-actions">
         <a class="btn btn-primary" href="portal/#careers">Sign in</a>
-        <a class="btn btn-glass" href="portal/#careers" data-signup>Create an account</a>
+        <a class="btn btn-glass" href="portal/#careers" data-signup>Create a free account</a>
       </div>
     </div>
   </div>
 </section>
-
 <section>
   <div class="wrap">
-    <div class="section-head"><span class="eyebrow">What's inside</span><h2>What members get.</h2></div>
+    <div class="section-head"><span class="eyebrow">Our vision</span><h2>Careers built on information, not on who you know.</h2></div>
+    <div class="cards vcards"><article class="card vcard"><span class="vcard-n">01</span><h3>Openings in the open</h3><p>Senior residency and consultant posts, fellowships and observerships in one place, so opportunity reaches every resident.</p></article><article class="card vcard"><span class="vcard-n">02</span><h3>A mentor for everyone</h3><p>One-to-one guidance from founders and mentors for CVs, fellowship applications, exams and research.</p></article><article class="card vcard"><span class="vcard-n">03</span><h3>Fair terms</h3><p>Clear advice on contracts, bonds, notice periods, duty hours and pay, and benchmarks that show what fair looks like.</p></article></div>
+  </div>
+</section>
+<section class="alt">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">How we help</span><h2>What members get.</h2></div>
     <ul class="gate-list"><li class="card"><h3>Job and fellowship listings</h3><p>Senior residency and consultant posts, fellowships in India and abroad, observerships and research openings.</p></li><li class="card"><h3>CV review</h3><p>Feedback on your CV before you apply for a post or fellowship.</p></li><li class="card"><h3>Fellowship guidance</h3><p>Choosing a fellowship, writing the application, and preparing for interviews.</p></li><li class="card"><h3>Job search and contracts</h3><p>What to check in a contract: bonds, notice periods, call duties and pay.</p></li><li class="card"><h3>Exam preparation</h3><p>Guidance for MD/DNB and other exams from those who have just passed them.</p></li><li class="card"><h3>Research mentorship</h3><p>Help with a thesis, a paper or a first project.</p></li></ul>
     <p class="note" style="margin-top:20px">Hiring, or offering a fellowship or observership? <a href="contact.html?topic=Post%20an%20opportunity">Send it to us</a> and we will share it with members.</p>
   </div>
@@ -57,5 +70,6 @@
 <script src="main.js"></script>
 <script src="js/config.js"></script>
 <script src="js/public.js"></script>
+<script src="js/members-area.js"></script>
 </body>
 </html>

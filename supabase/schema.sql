@@ -261,7 +261,7 @@ insert into public.founders (email, username, founder_id, name, cabinet_role, is
   ('kratika.bhatia@founders.roar.invalid', 'kratika.bhatia', 'FC-03', 'Dr. Kratika Bhatia', 'General Secretary', true, 3),
   ('shriya.dhingra@founders.roar.invalid', 'shriya.dhingra', 'FC-04', 'Dr. Shriya Dhingra', 'Additional Secretary – Spokesperson', false, 4),
   ('deepika.sharma@founders.roar.invalid', 'deepika.sharma', 'FC-05', 'Dr. Deepika Sharma', 'Additional Secretary – Social Media & Surveys', false, 5),
-  ('arshida.pulimala@founders.roar.invalid', 'arshida.pulimala', 'FC-06', 'Dr. Arshida Pulimala', 'Additional Secretary – Academic Society & Graphics', false, 6),
+  ('arshida.p@founders.roar.invalid', 'arshida.p', 'FC-06', 'Dr. Arshida P', 'Additional Secretary – Academic Society & Graphics', false, 6),
   ('arsheya.gupta@founders.roar.invalid', 'arsheya.gupta', 'FC-07', 'Dr. Arsheya Gupta', 'Additional Secretary – Research Society', false, 7),
   ('honey.sharma@founders.roar.invalid', 'honey.sharma', 'FC-08', 'Dr. Honey Sharma', 'Additional Secretary – Grievances & Legalities', false, 8),
   ('abhishek.bhadri@founders.roar.invalid', 'abhishek.bhadri', 'FC-09', 'Dr. Abhishek Bhadri', 'Additional Secretary – Treasurer & Memberships', false, 9)
@@ -1389,3 +1389,155 @@ grant execute on function public.public_founder_photos() to anon, authenticated;
 drop policy if exists community_founder_photos on storage.objects;
 create policy community_founder_photos on storage.objects for select to anon, authenticated
   using (bucket_id = 'community' and public.is_founder_avatar(name));
+
+-- =====================================================================
+-- PART 14: renaming founders safely, and the public list of founders
+-- * Usernames are stored in lower case and matched without regard to case ("Arshida.P" = "arshida.p").
+-- * When a founder's username (and so their login address) changes, their login moves with it,
+--   along with their votes and the records they created, so they can still sign in and set a password.
+-- * Repairs any founder whose username was changed before this part existed.
+-- * public_founders(): names, roles and photos for the public website, so a change in the console
+--   shows everywhere without editing the site.
+-- Safe to run again.
+-- =====================================================================
+create or replace function public.founders_normalise() returns trigger
+language plpgsql as $$
+begin
+  new.username := lower(trim(new.username));
+  new.email := lower(trim(new.email));
+  return new;
+end $$;
+drop trigger if exists founders_normalise on public.founders;
+create trigger founders_normalise before insert or update on public.founders
+  for each row execute function public.founders_normalise();
+
+-- Move a founder's login and records from one address to another
+create or replace function public.founder_move_login(p_old text, p_new text, p_founder_id text, p_name text) returns void
+language plpgsql security definer set search_path = public, extensions as $$
+declare uid uuid;
+begin
+  if p_old is null or p_new is null or lower(p_old) = lower(p_new) then return; end if;
+  select id into uid from auth.users where lower(email) = lower(p_new);
+  if uid is null then
+    select id into uid from auth.users where lower(email) = lower(p_old);
+    if uid is null and p_founder_id is not null then   -- found by the Founder ID stored when the login was created
+      select id into uid from auth.users where raw_user_meta_data ->> 'founder_id' = p_founder_id
+        and lower(email) like '%@founders.roar.invalid' order by created_at limit 1;
+    end if;
+    if uid is not null then
+      update auth.users set email = lower(p_new), updated_at = now(),
+        raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('name', p_name, 'founder_id', p_founder_id)
+        where id = uid;
+      update auth.identities set identity_data = identity_data || jsonb_build_object('email', lower(p_new)), updated_at = now()
+        where user_id = uid and provider = 'email';
+    end if;
+  end if;
+  -- Records that point at a founder by address
+  update public.votes    set voter_email = lower(p_new) where voter_email = lower(p_old);
+  update public.motions  set created_by  = lower(p_new) where created_by  = lower(p_old);
+  update public.surveys  set created_by  = lower(p_new) where created_by  = lower(p_old);
+  update public.members  set reviewed_by = lower(p_new) where reviewed_by = lower(p_old);
+end $$;
+revoke execute on function public.founder_move_login(text, text, text, text) from public, anon, authenticated;
+
+create or replace function public.founders_follow_rename() returns trigger
+language plpgsql security definer set search_path = public, extensions as $$
+begin
+  if new.email is distinct from old.email then
+    perform public.founder_move_login(old.email, new.email, new.founder_id, new.name);
+  end if;
+  return new;
+end $$;
+revoke execute on function public.founders_follow_rename() from public, anon, authenticated;
+drop trigger if exists founders_follow_rename on public.founders;
+create trigger founders_follow_rename after update of email on public.founders
+  for each row execute function public.founders_follow_rename();
+
+-- Look up usernames without regard to case
+create or replace function public.founder_login_status(p_username text) returns text
+language sql stable security definer set search_path = public as $$
+  select coalesce((select case when f.password_set then 'password' else 'choose_password' end
+                   from public.founders f where lower(f.username) = lower(trim(p_username))), 'unknown')
+$$;
+create or replace function public.founder_first_login(p_username text, p_password text) returns void
+language plpgsql security definer set search_path = public, extensions as $$
+declare f public.founders;
+begin
+  if char_length(coalesce(p_password, '')) < 10 then raise exception 'Use at least 10 characters.'; end if;
+  select * into f from public.founders where lower(username) = lower(trim(p_username)) for update;
+  if f.email is null then raise exception 'That username is not on the Founders'' Council list.'; end if;
+  if f.password_set then raise exception 'This account already has a password. Sign in with it, or ask the Chairman to reset it.'; end if;
+  if not exists (select 1 from auth.users where lower(email) = f.email) then   -- login still under an older address: bring it back
+    perform public.founder_move_login('missing@founders.roar.invalid', f.email, f.founder_id, f.name);
+  end if;
+  update auth.users set encrypted_password = crypt(p_password, gen_salt('bf')), updated_at = now() where lower(email) = f.email;
+  if not found then raise exception 'This founder''s login could not be found. Ask the Chairman to check the Founders page.'; end if;
+  update public.founders set password_set = true where email = f.email;
+end $$;
+create or replace function public.founder_reset_password(p_username text) returns void
+language plpgsql security definer set search_path = public, extensions as $$
+declare f public.founders;
+begin
+  if not public.can_reset_passwords() then raise exception 'Only the Chairman can reset passwords.'; end if;
+  select * into f from public.founders where lower(username) = lower(trim(p_username)) for update;
+  if f.email is null then raise exception 'Unknown username.'; end if;
+  update auth.users set encrypted_password = crypt(gen_random_uuid()::text || clock_timestamp()::text, gen_salt('bf')), updated_at = now() where lower(email) = f.email;
+  update public.founders set password_set = false where email = f.email;
+end $$;
+create or replace function public.founder_set_password(p_username text, p_password text) returns void
+language plpgsql security definer set search_path = public, extensions as $$
+declare f public.founders;
+begin
+  if not public.can_reset_passwords() then raise exception 'Only the Chairman can change other founders'' passwords.'; end if;
+  if char_length(coalesce(p_password, '')) < 10 then raise exception 'Use at least 10 characters.'; end if;
+  select * into f from public.founders where lower(username) = lower(trim(p_username)) for update;
+  if f.email is null then raise exception 'Unknown username.'; end if;
+  update auth.users set encrypted_password = crypt(p_password, gen_salt('bf')), updated_at = now() where lower(email) = f.email;
+  if not found then raise exception 'This founder''s login could not be found.'; end if;
+  update public.founders set password_set = true where email = f.email;
+end $$;
+
+-- Repair: founders whose username was changed before this part existed get their login back
+do $$
+declare f record;
+begin
+  for f in select * from public.founders fo where not exists (select 1 from auth.users u where lower(u.email) = fo.email) loop
+    perform public.founder_move_login('unknown@founders.roar.invalid', f.email, f.founder_id, f.name);
+  end loop;
+end $$;
+-- Founders with still no login at all (never created): create one, as PART 10 does
+insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+                        raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+                        confirmation_token, email_change, email_change_token_new, recovery_token)
+select '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated', f.email,
+       crypt(gen_random_uuid()::text || clock_timestamp()::text, gen_salt('bf')), now(),
+       '{"provider":"email","providers":["email"]}'::jsonb, jsonb_build_object('name', f.name, 'founder_id', f.founder_id),
+       now(), now(), '', '', '', ''
+from public.founders f where not exists (select 1 from auth.users u where lower(u.email) = f.email);
+insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+select gen_random_uuid(), u.id, u.id::text, jsonb_build_object('sub', u.id::text, 'email', u.email, 'email_verified', true), 'email', now(), now(), now()
+from auth.users u join public.founders f on lower(u.email) = f.email
+where not exists (select 1 from auth.identities i where i.user_id = u.id and i.provider = 'email');
+
+-- Founder ID sign-in (FC-06) is resolved by the database, so renaming a founder never breaks it
+create or replace function public.founder_username(p_login text) returns text
+language sql stable security definer set search_path = public as $$
+  select f.username from public.founders f
+  where lower(f.username) = lower(trim(p_login))
+     or upper(replace(f.founder_id, ' ', '')) = upper(regexp_replace(trim(p_login), '^fc-?0?([1-9])$', 'FC-0\1', 'i'))
+  order by (lower(f.username) = lower(trim(p_login))) desc
+  limit 1
+$$;
+grant execute on function public.founder_username(text) to anon, authenticated;
+
+-- The public list of founders (names, roles and Community photos) for the website
+create or replace function public.public_founders() returns table (founder_id text, name text, cabinet_role text, avatar_path text, sort int)
+language sql stable security definer set search_path = public as $$
+  select f.founder_id, f.name, f.cabinet_role, p.avatar_path, f.sort::int
+  from public.founders f
+  left join auth.users u on lower(u.email) = f.email
+  left join public.profiles p on p.id = u.id
+  where f.founder_id is not null
+  order by f.sort nulls last, f.founder_id
+$$;
+grant execute on function public.public_founders() to anon, authenticated;

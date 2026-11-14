@@ -164,4 +164,8 @@
 .opts-help .o input { margin-top: 4px; accent-color: var(--accent); }
 .opts-help .o:has(input:checked) { border-color: rgba(240,138,60,.7); background: rgba(240,138,60,.12); }
 .opts-help b { color: var(--text); font-weight: 600; }
-@media (max-width: 640px) { .area-user span { display: none; } .area-bar { justify-content: flex-start; } }
+.area-tabs { scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+.area-tabs::-webkit-scrollbar { display: none; }
+.area-tabs a { scroll-snap-align: center; }
+/* Phones: the header's account menu already has sign-out and the console link, so the tab strip gets the full width */
+@media (max-width: 640px) { .area-user { display: none; } .area-bar { justify-content: flex-start; } .area-tabs { width: 100%; } }

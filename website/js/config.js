@@ -8,7 +8,7 @@ window.ROAR_CONFIG = {
   // Founders sign in with a username; this is the domain of their Supabase login address (see SETUP.md)
   founderLoginDomain: 'founders.roar.invalid',
   // Founder IDs FC-01 ... FC-09, in order. Founders can sign in anywhere on the site with their username or Founder ID.
-  founderUsernames: ['aakash.bellige', 'aman.gupta', 'kratika.bhatia', 'shriya.dhingra', 'deepika.sharma', 'arshida.pulimala', 'arsheya.gupta', 'honey.sharma', 'abhishek.bhadri']
+  founderUsernames: ['akash.bellige', 'aman.gupta', 'kratika.bhatia', 'shriya.dhingra', 'deepika.sharma', 'arshida.p', 'arsheya.gupta', 'honey.sharma', 'abhishek.bhadri']
 };
 
 // Demo mode (sample data kept in the browser) runs only on your own computer, or on the hosted site

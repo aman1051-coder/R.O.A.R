@@ -2,12 +2,12 @@
 // Real data lives in Supabase; this file is never used once config.js is filled in.
 window.ROAR_DEMO_SEED = (function () {
   const founders = [
-    ['aakash', 'Dr. Aakash Bellige', 'President', true],
+    ['aakash', 'Dr. Akash Bellige', 'President', true],
     ['aman', 'Dr. Aman Gupta', 'Chairman', true],
     ['kratika', 'Dr. Kratika Bhatia', 'General Secretary', true],
     ['shriya', 'Dr. Shriya Dhingra', 'Additional Secretary – Spokesperson', false],
     ['deepika', 'Dr. Deepika Sharma', 'Additional Secretary – Social Media & Surveys', false],
-    ['arshida', 'Dr. Arshida Pulimala', 'Additional Secretary – Academic Society & Graphics', false],
+    ['arshida', 'Dr. Arshida P', 'Additional Secretary – Academic Society & Graphics', false],
     ['arsheya', 'Dr. Arsheya Gupta', 'Additional Secretary – Research Society', false],
     ['honey', 'Dr. Honey Sharma', 'Additional Secretary – Grievances & Legalities', false],
     ['abhishek', 'Dr. Abhishek Bhadri', 'Additional Secretary – Treasurer & Memberships', false],

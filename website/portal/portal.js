@@ -205,6 +205,8 @@
       <div class="area-user">${isFounder ? '<a class="btn btn-glass small" href="../council/">Founders\' console</a>' : `<span>${esc(shownName(sess))}</span>`}<button class="btn btn-glass small" id="tab-out">Sign out</button></div>
     </div>`;
     tabsEl.querySelector('#tab-out').addEventListener('click', async () => { await API.signOut(); location.hash = ''; render(); });
+    const strip = tabsEl.querySelector('.area-tabs'), on = strip && strip.querySelector('.on');   // keep the current tab in view on phones
+    if (on && strip.scrollWidth > strip.clientWidth) strip.scrollLeft = on.offsetLeft - (strip.clientWidth - on.offsetWidth) / 2;
   }
   window.addEventListener('hashchange', () => { if (sess) render(); });
 
@@ -434,7 +436,8 @@
   async function founderSignIn(id, pass, msg) {
     const list = cfg.founderUsernames || [];
     const m = id.match(/^fc-?0?([1-9])$/);
-    const username = m && list[+m[1] - 1] ? list[+m[1] - 1] : id;
+    const { data: known } = await sb.rpc('founder_username', { p_login: id });   // the database knows about renames
+    const username = known || (m && list[+m[1] - 1] ? list[+m[1] - 1] : id);
     const st = await API.founderStatus(username);
     if (st === 'unknown') return msg("That isn't a Founders' Council username. Members sign in with their email address.", 'err');
     if (st === 'choose_password') return founderChooseView(username);

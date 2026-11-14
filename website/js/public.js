@@ -82,10 +82,32 @@
         <h3>${esc(e.title)}</h3>
         <p class="event-when">${range}${e.city ? ' · ' + esc(e.city) : ''}${e.organiser ? ' · ' + esc(e.organiser) : ''}</p>
         ${e.description ? `<p>${esc(e.description)}</p>` : ''}
-        ${safeUrl(e.url) ? `<a class="more" href="${safeUrl(e.url)}" target="_blank" rel="noopener">Details &amp; registration ↗</a>` : ''}
+        <div class="event-links">${safeUrl(e.url) ? `<a class="more" href="${safeUrl(e.url)}" target="_blank" rel="noopener">Details &amp; registration ↗</a>` : ''}
+          <a class="more" href="#" data-ics="${esc(JSON.stringify({ id: e.id, title: e.title, starts_on: e.starts_on, ends_on: e.ends_on, city: e.city, description: e.description, url: e.url }))}">Add to calendar</a></div>
       </div>
     </article>`;
   }
+
+  // "Add to calendar": a small .ics file that phones and Outlook/Google Calendar open directly
+  function icsFile(e) {
+    const d = v => String(v).replace(/-/g, '');
+    const end = new Date((e.ends_on || e.starts_on) + 'T00:00:00Z'); end.setUTCDate(end.getUTCDate() + 1);
+    const t = v => String(v || '').replace(/\\/g, '\\\\').replace(/[,;]/g, m => '\\' + m).replace(/\r?\n/g, '\\n');
+    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//ROAR//Events//EN', 'BEGIN:VEVENT', `UID:${e.id || d(e.starts_on)}@roar`,
+      `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`, `DTSTART;VALUE=DATE:${d(e.starts_on)}`,
+      `DTEND;VALUE=DATE:${end.toISOString().slice(0, 10).replace(/-/g, '')}`, `SUMMARY:${t(e.title)}`,
+      e.description ? `DESCRIPTION:${t(e.description)}` : '', e.city ? `LOCATION:${t(e.city)}` : '', /^https?:\/\//.test(e.url || '') ? `URL:${e.url}` : '',
+      'END:VEVENT', 'END:VCALENDAR'].filter(Boolean);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([lines.join('\r\n')], { type: 'text/calendar' }));
+    a.download = String(e.title || 'roar-event').replace(/[^\w]+/g, '-').slice(0, 50) + '.ics';
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  document.addEventListener('click', ev => {
+    const a = ev.target.closest('[data-ics]'); if (!a || a.closest('[data-members-zone]')) return;
+    ev.preventDefault();
+    try { icsFile(JSON.parse(a.dataset.ics)); } catch (err) { console.warn(err); }
+  });
 
   function oppCard(o) {
     const soon = o.deadline && (new Date(o.deadline) - new Date(today)) / 864e5 <= 14;
